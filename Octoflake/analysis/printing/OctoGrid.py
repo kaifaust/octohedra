@@ -1,9 +1,6 @@
 from euclid3 import *
 from enum import Enum
 import math
-import subprocess
-import os
-import random
 import numpy as np
 
 sqrt2 = math.sqrt(2)

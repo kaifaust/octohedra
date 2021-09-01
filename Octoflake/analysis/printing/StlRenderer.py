@@ -1,6 +1,6 @@
 import math
 
-from GridBased import OctoGrid, Trim
+from OctoGrid import OctoGrid, Trim
 from enum import Enum
 import numpy as np
 import stl
