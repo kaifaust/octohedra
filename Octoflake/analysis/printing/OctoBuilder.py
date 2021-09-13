@@ -7,7 +7,13 @@ class OctoBuilder:
         self.iteration = iteration
         self.grid = OctoGrid()
 
+    @staticmethod
+    def stalag(grid, iteration):
+        OctoBuilder.tower(grid, iteration, (0, 0, 2 ** iteration / 4))
+
+    @staticmethod
     def tower(grid, iteration, center=(0, 0, 0)):
+        print(center)
         z = center[2]
         for i in range(iteration, 0, -1):
             print(i)
