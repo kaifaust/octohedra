@@ -1,0 +1,28 @@
+from printing.octo.OctoGrid import OctoGrid
+from printing.octo.OctoUtil import p2
+from printing.octo.builder.OctoFlake import OctoFlake
+
+
+class HollowFlake(OctoFlake):
+
+    def __init__(self, iteration, thickness_iteration=0, center=(0, 0, 0)):
+        super(HollowFlake, self).__init__()
+        self.iteration = iteration
+        self.thickness_iteration = thickness_iteration
+        self.center = center
+
+    def materialize_additive(self, input_grid=None):
+        input_grid = OctoGrid() if input_grid is None else input_grid
+
+        grid = OctoGrid()
+        grid.fill(self.iteration, self.thickness_iteration, self.center)
+
+        return input_grid + grid
+
+    def materialize_subtractive(self, grid):
+        t = p2(self.iteration) - 2 * p2(self.thickness_iteration)
+        grid.clear_octo(t, center=self.center)
+
+
+    def __repr__(self):
+        return f"HollowFlake({self.iteration}, {self.center}, {self.thickness_iteration})"
