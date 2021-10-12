@@ -57,10 +57,11 @@ config_3_thin = PrinterOctoConfigBuilder(
 #
 config_8 = PrinterOctoConfigBuilder(
     nozzle=0.8,
-    nozzle_width_multiplier=1.3,  # .35/.25,
+    # nozzle_width_multiplier=1.3,  # .35/.25,
+    absolute_line_width= 1,
     line_layer_ratio=2,
-    first_layer_multiplier=.5,
-    absolute_layers_per_cell=10,
+    first_layer_multiplier=1,
+    absolute_layers_per_cell=8,
     line_overlap=1,
     absolute_slit=.001
 )

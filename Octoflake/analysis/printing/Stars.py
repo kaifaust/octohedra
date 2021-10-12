@@ -4,11 +4,17 @@ from printing.octo.builder.OctoBuilder import OctoBuilder
 from printing.octo.builder.OctoTowerBuilder import OctoTowerBuilder
 from printing.rendering import RenderUtils
 
-i = 3
+i = 5
 
 single_builder = OctoBuilder()
 single_builder.make_flake(i, (0, 0, 0))
 single_mesh = single_builder.materialize()
+
+config = OctoConfigs.config_25
+config.absolute_layers_per_cell = 8
+config.derive()
+
+RenderUtils.basic_render(single_mesh, config, filename=f"{8}_single.stl")
 
 star_builder = OctoBuilder()
 star_builder.stellate(i, (0, 0, 0))
@@ -32,16 +38,37 @@ config = OctoConfigs.config_25
 # RenderUtils.basic_render(builder.materialize(), config)
 
 
-for layers in range(8, 9):
-    config = OctoConfigs.config_8
-    config.absolute_layers_per_cell = layers
-    config.derive()
+# for layers in range(6, 7):
+#     config = OctoConfigs.config_25
+#     config.absolute_layers_per_cell = layers
+#     config.derive()
+#
+#     RenderUtils.basic_render(single_mesh, config, filename=f"{layers}_single.stl")
+#     RenderUtils.basic_render(star_mesh, config, filename=f"{layers}_star.stl")
+#     RenderUtils.basic_render(tower_mesh, config, filename=f"{layers}_tower.stl")
+#     RenderUtils.basic_render(flower_mesh, config, filename=f"{layers}_flower.stl")
+#     RenderUtils.basic_render(evil_mesh, config, filename=f"{layers}_evil.stl")
 
-    RenderUtils.basic_render(single_mesh, config, filename=f"{layers}_single.stl")
-    RenderUtils.basic_render(star_mesh, config, filename=f"{layers}_star.stl")
-    RenderUtils.basic_render(tower_mesh, config, filename=f"{layers}_tower.stl")
-    RenderUtils.basic_render(flower_mesh, config, filename=f"{layers}_flower.stl")
-    RenderUtils.basic_render(evil_mesh, config, filename=f"{layers}_evil.stl")
 
 
-OctoConfigs.config_8.print_settings()
+
+# base_layers = 6
+# base_i = 4
+#
+# for i in range(1, base_i+1):
+#
+#     star_builder = OctoBuilder()
+#     star_builder.stellate(i, (0, 0, 0))
+#     star_mesh = star_builder.materialize()
+#
+#     config = OctoConfigs.config_25
+#     config.absolute_layers_per_cell = base_layers * p2(base_i-i)
+#     config.derive()
+#
+#     RenderUtils.basic_render(star_mesh, config, filename=f"i_{i}_star.stl")
+
+
+
+
+
+OctoConfigs.config_25.print_settings()

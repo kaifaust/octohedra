@@ -1,3 +1,5 @@
+from pathlib import Path
+
 import numpy as np
 from euclid3 import *
 from stl import mesh
@@ -166,6 +168,26 @@ class StlRenderer:
         down_welding_belt_top = cardinal * 2 * weld + bottom + 2 * up * weld
         down_welding_belt_bottom = cardinal * 2 * weld + bottom - up * 2 * weld
 
+        # belts = [equator_belt, equator_top_belt, equator_bottom_belt, top_solid_belt, bottom_solid_belt, top_belt,
+        #          bottom_belt, up_welding_belt_top, up_welding_belt_bottom, down_welding_belt_top,
+        #          down_welding_belt_bottom]
+        # upper_belts = [equator_top_belt, top_solid_belt, top_belt, up_welding_belt_top, up_welding_belt_bottom]
+        # lower_belts = [equator_bottom_belt, bottom_solid_belt, bottom_belt, down_welding_belt_top,
+        #                down_welding_belt_bottom]
+        #
+        # for belt in belts:
+        #     if Crop.SW in cell.crops:
+        #         belt[0][0] = 0
+        #         belt[0][1] = 0
+        #
+        # if Crop.UP in cell.crops:
+        #     for belt in upper_belts:
+        #         belt[:, 2] = 0
+        #
+        # if Crop.DOWN in cell.crops:
+        #     for belt in lower_belts:
+        #         belt[:, 2] = 0
+
         faces = []
 
         if cell.is_solid:
@@ -223,10 +245,8 @@ class StlRenderer:
                 faces.append(self.stitch_belts(equator_bottom_belt, bottom_belt))
                 faces.append(self.seal_belt(bottom_belt, bottom=True))
 
-
         if Crop.UP in cell.crops:
             pass
-
 
         # Make the faces into a mesh
         face_array = np.concatenate(faces)
@@ -239,73 +259,76 @@ class StlRenderer:
 
 
 def testing():
-
     cell = OctoCell()
+    # cell.is_pyramid = True
+    # cell.weld_up = True
+    cell.crops = {Crop.UP}
     config = OctoConfig()
     rendererer = StlRenderer()
     octo = rendererer.neo_trimmed_octo(cell, config.cell_size, config.overlap, config.slit)
+    octo.save(Path.home() / "Desktop" / "derp.stl")
 
     # print(octo.`)
 
 
-if __name__=="__main__":
+if __name__ == "__main__":
     testing()
 
-        # Old bullshit delete when this is working
+    # Old bullshit delete when this is working
 
-        # top_belt = top_cardinal * trim_top_bottom + top
-        # equator_top_belt = top_cardinal * (size - trim) + top
-        # equator_belt = top_cardinal * size + top
-        #
-        # equator_bottom_belt = bottom_cardinal * (size - trim) + bottom
-        # bottom_belt = bottom_cardinal * trim_top_bottom + bottom
-        #
-        # top_welding_belt = bottom_cardinal * 2 * trim_top_bottom + bottom
-        # bottom_welding_belt = np.copy(top_welding_belt)
-        # bottom_welding_belt[:, 2] = bottom_belt[0, 2] + 0.1
-        #
-        # top_flange_belt = np.copy(equator_top_belt)
-        # bottom_flange_belt = np.copy(equator_belt)
-        #
-        # if Trim.FRONT in trims:
-        #     top_flange_belt[:2, 1] = bottom_flange_belt[0, 1]
-        #     equator_belt[: 2, 1] = equator_top_belt[0, 1]
-        # if Trim.BACK in trims:
-        #     top_flange_belt[2:, 1] = bottom_flange_belt[2, 1]
-        #     equator_belt[2:, 1] = equator_top_belt[2, 1]
-        # if Trim.RIGHT in trims:
-        #     top_flange_belt[1:3, 0] = bottom_flange_belt[1, 0]
-        #     equator_belt[1: 3, 0] = equator_top_belt[1, 0]
-        #
-        # if Trim.LEFT in trims:
-        #     top_flange_belt[3, 0] = bottom_flange_belt[0, 0]
-        #     top_flange_belt[0, 0] = bottom_flange_belt[0, 0]
-        #
-        #     equator_belt[3, 0] = equator_top_belt[0, 0]
-        #     equator_belt[0, 0] = equator_top_belt[0, 0]
-        #
-        # faces = []
-        # faces.append(self.seal_belt(top_belt))
-        # # faces.append(self.stitch_belt_to_point(top, top_belt))
-        # faces.append(self.stitch_belts(top_belt, equator_top_belt))
-        # faces.append(self.stitch_belts(equator_top_belt, equator_belt))
-        #
-        # if is_pyramid:
-        #
-        #     faces.append(self.seal_belt(top_flange_belt, top=True))
-        #     faces.append(self.stitch_belts(top_flange_belt, bottom_flange_belt))
-        #     faces.append(self.seal_belt(bottom_flange_belt, top=False))
-        #
-        #     # faces.append( self.seal_belt(equator_belt, top=False))
-        # else:
-        #
-        #     # faces.append(self.stitch_belts(equator_belt, equator_bottom_belt))
-        #     # faces.append(self.stitch_belts(equator_bottom_belt, bottom_belt))
-        #     # faces.append(self.seal_belt(bottom_belt, top=False))
-        #     pass
-        #     # faces.append(self.stitch_belts(equator_bottom_belt, top_welding_belt))
-        #     # faces.append(self.stitch_belts(top_welding_belt, bottom_welding_belt))
-        #     # faces.append(self.seal_belt(bottom_welding_belt, top=False))
+    # top_belt = top_cardinal * trim_top_bottom + top
+    # equator_top_belt = top_cardinal * (size - trim) + top
+    # equator_belt = top_cardinal * size + top
+    #
+    # equator_bottom_belt = bottom_cardinal * (size - trim) + bottom
+    # bottom_belt = bottom_cardinal * trim_top_bottom + bottom
+    #
+    # top_welding_belt = bottom_cardinal * 2 * trim_top_bottom + bottom
+    # bottom_welding_belt = np.copy(top_welding_belt)
+    # bottom_welding_belt[:, 2] = bottom_belt[0, 2] + 0.1
+    #
+    # top_flange_belt = np.copy(equator_top_belt)
+    # bottom_flange_belt = np.copy(equator_belt)
+    #
+    # if Trim.FRONT in trims:
+    #     top_flange_belt[:2, 1] = bottom_flange_belt[0, 1]
+    #     equator_belt[: 2, 1] = equator_top_belt[0, 1]
+    # if Trim.BACK in trims:
+    #     top_flange_belt[2:, 1] = bottom_flange_belt[2, 1]
+    #     equator_belt[2:, 1] = equator_top_belt[2, 1]
+    # if Trim.RIGHT in trims:
+    #     top_flange_belt[1:3, 0] = bottom_flange_belt[1, 0]
+    #     equator_belt[1: 3, 0] = equator_top_belt[1, 0]
+    #
+    # if Trim.LEFT in trims:
+    #     top_flange_belt[3, 0] = bottom_flange_belt[0, 0]
+    #     top_flange_belt[0, 0] = bottom_flange_belt[0, 0]
+    #
+    #     equator_belt[3, 0] = equator_top_belt[0, 0]
+    #     equator_belt[0, 0] = equator_top_belt[0, 0]
+    #
+    # faces = []
+    # faces.append(self.seal_belt(top_belt))
+    # # faces.append(self.stitch_belt_to_point(top, top_belt))
+    # faces.append(self.stitch_belts(top_belt, equator_top_belt))
+    # faces.append(self.stitch_belts(equator_top_belt, equator_belt))
+    #
+    # if is_pyramid:
+    #
+    #     faces.append(self.seal_belt(top_flange_belt, top=True))
+    #     faces.append(self.stitch_belts(top_flange_belt, bottom_flange_belt))
+    #     faces.append(self.seal_belt(bottom_flange_belt, top=False))
+    #
+    #     # faces.append( self.seal_belt(equator_belt, top=False))
+    # else:
+    #
+    #     # faces.append(self.stitch_belts(equator_belt, equator_bottom_belt))
+    #     # faces.append(self.stitch_belts(equator_bottom_belt, bottom_belt))
+    #     # faces.append(self.seal_belt(bottom_belt, top=False))
+    #     pass
+    #     # faces.append(self.stitch_belts(equator_bottom_belt, top_welding_belt))
+    #     # faces.append(self.stitch_belts(top_welding_belt, bottom_welding_belt))
+    #     # faces.append(self.seal_belt(bottom_welding_belt, top=False))
 
     # def trimmed_octo(self, size, overlap, slit, center=(0, 0, 0), trims=frozenset(), is_pyramid=False,
     #                  pyramid_floor=0.2):
