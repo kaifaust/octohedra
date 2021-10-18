@@ -11,7 +11,7 @@ module octahedron() {
         [0, 0, 1], // top
         [0, 0, -1], // bottom
     ];
-//
+
     octo_faces = [
         [0, 1, 4], // top pyramid
         [1, 2, 4],
@@ -22,8 +22,6 @@ module octahedron() {
         [3, 2, 5],
         [0, 3, 5],
     ];
-    
-
 
     polyhedron(
         points = octo_points,
@@ -50,6 +48,6 @@ module octoflake(i, size, center){
 }
 
 
-//octahedron();
+
 
 octoflake(2, 1, [0,0,0]);

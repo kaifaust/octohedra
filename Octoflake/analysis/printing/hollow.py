@@ -2,8 +2,8 @@ from stl import Mode
 
 from printing.octo import OctoConfigs
 
-from printing.octo.builder.HollowOctoBuilder import HollowOctoBuilder
-from printing.octo.builder.OctoBuilder import OctoBuilder
+from printing.octo.builder.HollowOctoBuilder import HollowOldOctoBuilder
+from printing.octo.builder.OldOctoBuilder import OldOctoBuilder
 from printing.octo.OctoGrid import OctoGrid
 from printing.octo.OctoCell import Trim
 from printing.octo.OctoUtil import p2
@@ -51,7 +51,7 @@ c = (0, 0, p2(i, -1) - p2(i, -2))
 
 def filled_flake(i, center):
     grid.make_flake(i, center=center)
-    OctoBuilder.fill(grid, i, center)
+    OldOctoBuilder.fill(grid, i, center)
 
 
 i1 = i - 1
@@ -91,7 +91,7 @@ center = c
 
 
 
-builder = HollowOctoBuilder()
+builder = HollowOldOctoBuilder()
 
 # builder.hollow_flake(4, c, 1)
 

@@ -1,3 +1,4 @@
+import numpy as np
 from euclid3 import Vector3
 import math
 
@@ -15,3 +16,17 @@ Z = Vector3(0, 0, 1)
 
 X2 = Vector3(2, 0, 0)
 Y2 = Vector3(0, 2, 0)
+
+E = np.array((1, 0, 0))
+N = np.array((0, 1, 0))
+W = np.array((-1, 0, 0))
+S = np.array((0, -1, 0))
+
+NE = N + E
+NW = N + W
+SW = S + W
+SE = S + E
+
+CARDINAL = np.array([E, N, W, S])
+UP = np.array((0, 0, 1))
+DOWN = np.array((0, 0, -1))

@@ -1,6 +1,9 @@
 import math
 
-from printing.octo.OctoConfig import PrinterOctoConfigBuilder
+from printing.octo.OctoConfig import PrinterOctoConfigBuilder, OctoConfig
+
+render_testing = OctoConfig(10, 3, 0.1)
+no_overlap = OctoConfig(10, 0, 0)
 
 # config_2 = PrinterOctoConfigBuilder(
 #     nozzle=0.2,
@@ -15,8 +18,9 @@ config_25 = PrinterOctoConfigBuilder(
     nozzle=0.25,
     nozzle_width_multiplier=1.3,
     line_layer_ratio=2,
-    first_layer_multiplier=1,
+    first_layer_multiplier=.5,
     absolute_layers_per_cell=8,
+    absolute_slit=0.001
 )
 #
 # config_3 = PrinterOctoConfigBuilder(

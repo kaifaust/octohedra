@@ -7,7 +7,7 @@ OVERLAP_EPS = 0.0001
 
 class OctoConfig:
     def __init__(self, cell_size=2, overlap=.25, slit=0.001):
-        self.cell_size = cell_size
+        self.cell_size = cell_size # Note that this is the diagonal
         self.overlap = overlap
         self.slit = slit
 
@@ -74,19 +74,20 @@ class PrinterOctoConfigBuilder(OctoConfig):
         self.slit = self.line_width * self.slit_ratio if self.slit_absolute is None else self.slit_absolute
 
         self.overlap = self.line_width + (1 - self.line_overlap) * self.line_width * (SQRT2 - 1) + OVERLAP_EPS
+        self.overlap *= SQRT2
 
         target_cell_size = self.target_overlap_cell_ratio * self.overlap
         target_layers = math.ceil(target_cell_size * SQRT22 / self.layer_height)
 
         self.layers_per_cell = target_layers if self.absolute_layers_per_cell is None else self.absolute_layers_per_cell
 
-        self.cell_size = self.layers_per_cell * self.layer_height / SQRT22
+        self.cell_size = self.layers_per_cell * self.layer_height #/ SQRT22
 
 
 
         self.solid_layers = 1 + round((self.overlap / 2 - self.first_layer_height) / self.layer_height)
 
-        print(self.overlap, self.overlap/2, self.first_layer_height, self.layer_height, self.solid_layers)
+        # print(self.overlap, self.overlap/2, self.first_layer_height, self.layer_height, self.solid_layers)
 
 
     def print_derived_values(self):

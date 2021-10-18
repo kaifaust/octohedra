@@ -1,96 +1,54 @@
-from euclid3 import Vector3
-
 from printing.octo.OctoGrid import OctoGrid
-import numpy as np
-
-from printing.octo.OctoUtil import p2
-from printing.octo.builder.OctoFlake import OctoFlake
 
 
 class OctoBuilder:
+    """Represents a generalized flake-like thing that knows how to materialize itself to an OctoGrid"""
 
     def __init__(self):
-        self.flakes = dict()
+        self.children = set()
 
+    def materialize(self):
+        """
+        Generate a grid containing this flake alone.
 
-    def make_flake(self, i, c):
-        self.flakes[c] = OctoFlake(i, c)
+        Call this on the root of your tree of octobuilders
+        """
 
-    def materialize(self, grid=None, bonus_i=0):
-        grid = OctoGrid() if grid is None else grid
+        grid = OctoGrid()
 
-        for flake in self.flakes.values():
-            flake.materialize_additive(grid)
-
-        for flake in self.flakes.values():
-            flake.materialize_subtractive(grid)
-
+        self.materialize_additive(grid)
+        self.materialize_subtractive(grid)
         return grid
 
 
-    def stellate(self, iteration, center=None, offset=None):
-        offset = 2 ** (iteration) if offset is None else offset
-        center = center if center is not None else (0,0,0)
-        si = iteration-1
-        self.make_flake(iteration, center)
+    def materialize_additive(self, grid, bonus_iteration=0):
+        """
+        Add to the given grid every cell that this flake could conceivably need.
 
-        self.make_flake(si, (center[0] + offset, center[1] + offset, center[2]))
-        self.make_flake(si, (center[0] + offset, center[1] - offset, center[2]))
-        self.make_flake(si, (center[0] - offset, center[1] + offset, center[2]))
-        self.make_flake(si, (center[0] - offset, center[1] - offset, center[2]))
-        self.make_flake(si, (center[0], center[1], center[2] + offset))
-        self.make_flake(si, (center[0], center[1], center[2] - offset))
+        Use additional private grids to do an additive/subtractive approach, and merge into the given grid.
 
-    @staticmethod
-    def stalag(grid, iteration):
-        OctoBuilder.tower(grid, iteration, (0, 0, 2 ** iteration / 2))
+        The OctoGrid class knows how to generate the basic Octahedron Flake, and fill and clear rectangular and
+        octahedral regions. Any functionality beyond that should be in an OctoFlake subclass.
+        """
 
-    @staticmethod
-    def tower_complex(grid, iteration, center=(0, 0, 0)):
-        if iteration < 1:
-            return
-        OctoBuilder.tower(grid, iteration, center, full_evil=True)
-        OctoBuilder.tower_complex(grid, iteration - 1,
-                                  (center[0] + 2 ** iteration, center[1] + 2 ** iteration, center[2]))
-        OctoBuilder.tower_complex(grid, iteration - 1,
-                                  (center[0] + 2 ** iteration, center[1] - 2 ** iteration, center[2]))
-        OctoBuilder.tower_complex(grid, iteration - 1,
-                                  (center[0] - 2 ** iteration, center[1] + 2 ** iteration, center[2]))
-        OctoBuilder.tower_complex(grid, iteration - 1,
-                                  (center[0] - 2 ** iteration, center[1] - 2 ** iteration, center[2]))
 
-    @staticmethod
-    def tower(grid, iteration, center=(0, 0, 0), evil=frozenset(), full_evil=False, thin_evil=True):
-        z = 0
-        center = np.array(center)
-        for i in range(iteration, 0, -1):
-            grid.make_flake(i, center=(center[0], center[1], center[2] + z))
 
-            if i in evil or (full_evil and iteration >= i > 1):
-                exy = 2 ** (i) - 2 ** (i - 2) if not thin_evil else p2(i)
-                ez = z + 2 ** (i - 2) if not thin_evil else z + p2(i, -1)
-                sub_evil = full_evil
-                OctoBuilder.tower(grid, i - 1, center + (exy, exy, ez), full_evil=sub_evil)
-                OctoBuilder.tower(grid, i - 1, center + (exy, -exy, ez), full_evil=sub_evil)
-                OctoBuilder.tower(grid, i - 1, center + (-exy, exy, ez), full_evil=sub_evil)
-                OctoBuilder.tower(grid, i - 1, center + (-exy, -exy, ez), full_evil=sub_evil)
+        for child in self.children:
+            child.materialize_additive(grid)
 
-                # grid.make_flake(i-1, center +  (exy, exy, ez))
-                # grid.make_flake(i-1, center +  (exy, -exy, ez))
-                # grid.make_flake(i-1, center +  (-exy, exy, ez))
-                # grid.make_flake(i-1, center + (-exy, -exy, ez))
+        return grid
 
-            z += 2 ** i
+    def materialize_subtractive(self, grid, bonus_iteration=0):
+        """
+        Given a grid containing potentially many flakes,
+        remove any cells necessary to maintain the properties of this flake.
 
-    @staticmethod
-    def fill(grid, iteration, center=(0, 0, 0)):
-        offset = 2 ** (iteration - 2)
-        i2 = iteration - 2
-        grid.make_flake(i2, center=(center[0] + 2 * offset, center[1], center[2] + offset))
-        grid.make_flake(i2, center=(center[0] - 2 * offset, center[1], center[2] + offset))
-        grid.make_flake(i2, center=(center[0], center[1] + 2 * offset, center[2] + offset))
-        grid.make_flake(i2, center=(center[0], center[1] - 2 * offset, center[2] + offset))
-        grid.make_flake(i2, center=(center[0] + 2 * offset, center[1], center[2] - offset))
-        grid.make_flake(i2, center=(center[0] - 2 * offset, center[1], center[2] - offset))
-        grid.make_flake(i2, center=(center[0], center[1] + 2 * offset, center[2] - offset))
-        grid.make_flake(i2, center=(center[0], center[1] - 2 * offset, center[2] - offset))
+        The basic flake doesn't need to remove anything.
+        """
+
+
+
+        for child in self.children:
+            child.materialize_subtractive(grid)
+
+        return grid

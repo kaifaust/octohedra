@@ -3,20 +3,19 @@ import math
 from euclid3 import Vector3
 
 from printing.octo.builder.HollowFlake import HollowFlake
-from printing.octo.builder.OctoBuilder import OctoBuilder
+from printing.octo.builder.OldOctoBuilder import OldOctoBuilder
 from printing.octo.OctoGrid import OctoGrid
 from printing.octo.OctoUtil import p2, Z, X, Y
 
 
-class HollowOctoBuilder(OctoBuilder):
+class HollowOldOctoBuilder(OldOctoBuilder):
 
     def __init__(self, default_thickness = 0):
-        super(HollowOctoBuilder, self).__init__()
+        super(HollowOldOctoBuilder, self).__init__()
         self.flakes = dict()
         self.default_thickness = default_thickness
 
     def make_flake(self, i, c):
-        print("Making a flake with center",c)
         self.flakes[c] = HollowFlake(i, self.default_thickness, c)
 
 

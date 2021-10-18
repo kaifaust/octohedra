@@ -27,20 +27,20 @@ class Growth(Enum):
         }
 
 
-class OctoTowerConfig:
-
-    def __init__(self,
-                 base_i,
-                 min_i=0,
-                 center=None,
-                 max_evil=math.inf,
-                 min_evil=1
-                 ):
-        self.base_i = base_i
-        self.min_i = min_i
-        self.center = center
-        self.max_evil = max_evil
-        self.min_evil = min_evil
+# class OctoTowerConfig:
+#
+#     def __init__(self,
+#                  base_i,
+#                  min_i=0,
+#                  center=None,
+#                  max_evil=math.inf,
+#                  min_evil=1
+#                  ):
+#         self.base_i = base_i
+#         self.min_i = min_i
+#         self.center = center
+#         self.max_evil = max_evil
+#         self.min_evil = min_evil
 
 
 class OctoTowerBuilder:

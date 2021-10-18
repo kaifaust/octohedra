@@ -1,6 +1,6 @@
 from printing.octo import OctoConfigs
 from printing.octo.OctoGrid import OctoGrid
-from printing.octo.builder.OctoBuilder import OctoBuilder
+from printing.octo.builder.OldOctoBuilder import OldOctoBuilder
 from printing.rendering import RenderUtils
 
 TEST_FILE_NAME = "/Users/silver/Desktop/derp.stl"
@@ -12,7 +12,7 @@ grid = OctoGrid()
 iteration = 4
 
 
-OctoBuilder.stalag(grid, iteration)
+OldOctoBuilder.stalag(grid, iteration)
 
 
 config = OctoConfigs.config_8_thin

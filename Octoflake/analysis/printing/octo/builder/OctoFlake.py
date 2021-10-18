@@ -1,41 +1,42 @@
-from printing.octo.OctoGrid import OctoGrid
+from euclid3 import Vector3
+
+from printing.octo.builder.OctoBuilder import OctoBuilder
 
 
-class OctoFlake:
-    """Represents a generalized flake-like thing that knows how to materialize itself to an OctoGrid"""
-
-    def __init__(self, iteration, center):
+class OctoFlake(OctoBuilder):
+    def __init__(self, iteration, center: Vector3 = None, cell_scale=0):
+        super().__init__()
         self.iteration = iteration
-        self.center = center
-
-    def test_materialize(self):
-        """
-        Generate a grid containing this flake alone.
-
-        Not suitable for combining with other grids containing other flakes.
-        """
-        grid = self.materialize_additive()
-        return self.materialize_subtractive(grid)
+        self.center = center if center is not None else Vector3(0, 0, 0)
+        self.cell_scale = cell_scale
 
     def materialize_additive(self, grid, bonus_iteration=0):
-        """
-        Add to the given grid every cell that this flake could conceivably need.
+        grid.make_flake(self.iteration, self.center, self.cell_scale)
 
-        Use additional private grids to do an additive/subtractive approach, and merge into the given grid.
-
-        The OctoGrid class knows how to generate the basic Octahedron Flake, and fill and clear rectangular and
-        octahedral regions. Any functionality beyond that should be in an OctoFlake subclass.
-        """
-
-        grid.make_flake(self.iteration, x = self.center[0], y = self.center[1], z = self.center[2])
-
-        return OctoGrid()
-
-    def materialize_subtractive(self, grid, bonus_iteration=0):
-        """
-        Given a grid containing potentially many flakes,
-        remove any cells necessary to maintain the properties of this flake.
-
-        The basic flake doesn't need to remove anything.
-        """
-        return grid
+#
+#
+#
+# class OctoFlakeBuilder(OctoBuilder):
+#
+#
+#     def __init__(self, iteration, center:Vector3 = None, size = 1):
+#         super.__init__()
+#         self.iteration = iteration
+#         self.center = center if center is not None else Vector3(0,0,0)
+#         self.size = size
+#
+#
+#
+#
+#
+#     # def materialize_additive(self, grid=None, bonus_iteration=0):
+#     #     grid = grid if grid is not None else OctoGrid()
+#     #
+#     #     OctoFlakeBuilder.make_flake(self.iteration, self.center, grid, bonus_iteration)
+#
+#
+#     def make_flake(self, iteration, center, grid, cell_scale):
+#
+#         if iteration == cell_scale:
+#             self.children.add(OctahedronBuilder.)
+#             grid.make_flake(iteration, center)

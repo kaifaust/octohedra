@@ -1,9 +1,9 @@
 from printing.octo.OctoGrid import OctoGrid
 from printing.octo.OctoUtil import p2
-from printing.octo.builder.OctoFlake import OctoFlake
+from printing.octo.builder.OctoBuilder import OctoBuilder
 
 
-class HollowFlake(OctoFlake):
+class HollowFlake(OctoBuilder):
 
     def __init__(self, iteration, thickness_iteration=0, center=(0, 0, 0)):
         super(HollowFlake, self).__init__()

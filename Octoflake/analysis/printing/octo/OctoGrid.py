@@ -1,20 +1,34 @@
+from collections import defaultdict
+from copy import copy
+
 import numpy as np
 from euclid3 import *
+from multimap import MultiMap, MutableMultiMap
+from stl import mesh
 
 from printing.octo.OctoCell import OctoCell, Trim, Crop
-from printing.octo.OctoUtil import X, Y, Z, Y2, X2, p2
+from printing.octo.OctoUtil import X, Y, Z, Y2, X2, p2, E, DOWN, UP, S, W, N, NE, SE, SW, NW
 
 
 class OctoGrid:
     """This class only knows how to generate primitive octoflakes."""
 
     def __init__(self):
-        self.occ = dict()
-        self.welding = dict()
-        pass
+        self.occ = defaultdict(set)
+
+
 
     def merge(self, other):
-        self.occ = {**self.occ, **other.occ}
+        keys = set(self.occ).union(other.occ)
+
+        new_occ = defaultdict(set)
+        for key in keys:
+            new_occ[key] = self.occ[key].union(other.occ[key])
+
+
+
+
+        self.occ = new_occ
         return self
 
     def __add__(self, other):
@@ -127,93 +141,192 @@ class OctoGrid:
         print(s, o, r)
 
         for z in range(-r, r + 1):
-            hr = r - abs(z) -1
+            hr = r - abs(z) - 1
             for x in range(-hr, hr + 1, 2):
                 for y in range(-hr, hr + 1, 2):
                     c = Vector3(*center) + (s * x, s * y, s * z)
 
                     self.make_flake(f_i, center=c)
 
+    def make_flake(self, iteration, center: Vector3 = None, cell_scale=0, overwrite=False):
+        # print(iteration, center, cell_scale)
+        center = center if center is not None else Vector3(0, 0, 0)
 
-    def make_flake(self, iteration, x=0, y=0, z=0, center=None):
-        center = center if center is not None else Vector3(x, y, z)
-        x, y, z = center
-        if iteration == 0:
-            if tuple(center) not in self.occ:
-                center_tup = tuple(center)
-                # forprint(center_tup)
-                # if not all(map(lambda q: q == int(q), center_tup)):
-                #     print("Wtffff", center_tup)
-
-                self.occ[tuple(center)] = OctoCell()
+        # if iteration == 0:
+        #     self.insert_cell(center, cell_scale=0, is_subcell=cell_scale>0)
+        #     return
+        if iteration == -1:
             return
+        if iteration == cell_scale:
+            # print("Inserting real cell at", center)
+            self.insert_cell(center, cell_scale, overwrite=overwrite)
+        elif iteration> cell_scale:
+            # print("inserting dummy at", center)
+            self.insert_cell(center, iteration, is_dummy=True)
+        elif iteration==0:
+            self.insert_cell(center, iteration, is_dummy=True)
 
         i1 = iteration - 1
-        o = 2 ** i1
+        o = p2(i1)
 
-        if tuple(center) not in self.welding:
-            self.welding[tuple(center)] = True
+        for direction in (E, N, W, S, UP, DOWN):
+            self.make_flake(i1, center=center + o * direction, cell_scale=cell_scale)
 
-        self.make_flake(i1, center=center + Vector3(o, o, 0))
-        self.make_flake(i1, center=center + Vector3(o, -o, 0))
-        self.make_flake(i1, center=center + Vector3(-o, o, 0))
-        self.make_flake(i1, center=center + Vector3(-o, -o, 0))
-        self.make_flake(i1, center=center + Vector3(0, 0, o))
-        self.make_flake(i1, center=center + Vector3(0, 0, -o))
+        return self
 
-    def crop(self, x_min=None, x_max=None, y_min=None, y_max=None, z_min=None, z_max=None):
+    def insert_cell(self, center: Vector3, cell_scale=0, is_subcell=False, overwrite=False, is_dummy=False):
 
-        to_remove = []
-        for center, cell in self.occ.items():
-            if center[2] == z_min:
-                cell.is_pyramid = True
-                cell.crops.add(Crop.UP)
-            if center[2] < z_min:
-                to_remove.append(center)
+
+        m = p2(cell_scale)
+
+        is_clear = True
+        for i in range(-m, m + 1):
+            for j in range(-m, m + 1):
+                for k in range(-m, m + 1):
+
+                    xy = abs(i) + abs(j) <= m
+                    yz = abs(j) + abs(k) <= m
+                    zx = abs(k) + abs(i) <= m
+
+                    if yz and zx and xy:
+                        c = tuple(Vector3(i, j, k) + center)
+                        if c in self.occ:
+                            for cell in self.occ[c]:
+                                if not cell.is_dummy:
+                                    is_clear = False
+
+
+        # if cell_scale == 2:
+        #     print(is_clear, overwrite)
+        if is_clear or overwrite:
+            self.occ[tuple(center)].add(OctoCell(cell_scale=cell_scale, center=center, is_subcell=is_subcell,
+                                               is_dummy=is_dummy))
+
+
+
+        # if cell_scale == 0:
+        #     return
+
+        # r = p2(cell_scale)
+        # for z in range(-r, r + 1):
+        #     hr = r - abs(z) - 1
+        #     for x in range(-hr, hr + 1, 2):
+        #         for y in range(-hr, hr + 1, 2):
+        #             c = Vector3(*center) + (x, y, z)
+        #             self.occ[tuple(c)] = OctoCell(is_dummy=True)
+
+    def render(self, config):
+        mesh_data = [
+
+            cell.render(config, center).data
+            for center, cells in self.occ.items()
+            for cell in cells
+            if not cell.is_dummy]
+
+        # print(mesh_data)
+
+        # for center, cell in self.occ.items():
+        #     print(center, cell.is_dummy)
+
+        # for center, cell in grid.occ.items():
+        #     center = np.array(center) * (config.cell_size / 2, config.cell_size / 2, config.cell_size * sqrt22)
+        #     meshes.append(
+        #         self.neo_trimmed_octo(cell, config.cell_size, config.overlap, config.slit, center))
+
+        return mesh.Mesh(np.concatenate(mesh_data))
+
+    def crop(self, x_min=-math.inf, x_max=math.inf, y_min=-math.inf, y_max=math.inf, z_min=-math.inf, z_max=math.inf):
+
+
+
+        to_remove = set()
+        for center, cells in self.occ.items():
+            for cell in cells:
+                x, y, z = center
+                if center[2] == z_min:
+                    cell.crops.add(Crop.BOTTOM)
+                if center[2] < z_min:
+                    to_remove.add(center)
+
+                if center[2] == z_max:
+                    cell.crops.add(Crop.TOP)
+                if center[2] > z_max:
+                    to_remove.add(center)
+                #
+                if x == x_min:
+                    cell.crops.add(Crop.WEST)
+                elif x < x_min:
+                    to_remove.add(center)
+
+                if x == x_max:
+                    cell.crops.add(Crop.EAST)
+                elif x > x_max:
+                    to_remove.add(center)
+
+                if y == y_min:
+                    cell.crops.add(Crop.SOUTH)
+                elif y < y_min:
+                    to_remove.add(center)
+
+                if y == y_max:
+                    cell.crops.add(Crop.NORTH)
+                elif y > y_max:
+                    to_remove.add(center)
+
+            # if center[2] == z_min:
+            #     cell.crops.add(Crop.TOP)
+            # if center[2] < z_min:
+            #     to_remove.append(center)
+            #
+            # if center[2] == z_min:
+            #     cell.crops.add(Crop.TOP)
+            # if center[2] < z_min:
+            #     to_remove.append(center)
+            #
+            # if center[2] == z_min:
+            #     cell.crops.add(Crop.TOP)
+            # if center[2] < z_min:
+            #     to_remove.append(center)
 
         for center in to_remove:
             self.occ.pop(center)
 
-        weld_to_remove = []
-        for center in self.welding:
-            if center[2] == z_min:
-                self.welding[center] = True
-            if center[2] < z_min:
-                weld_to_remove.append(center)
-
-        for center in weld_to_remove:
-            self.welding.pop(center)
+        return self
 
     def compute_trimming(self):
-        for center, cell in self.occ.items():
+        for center, cells in self.occ.items():
+            for cell in cells:
 
-            vc = Vector3(*center)
+                vc = Vector3(*center)
 
-            if tuple(vc + X2) in self.occ:
-                cell.trims.add(Trim.RIGHT)
-            if tuple(vc - X2) in self.occ:
-                cell.trims.add(Trim.LEFT)
-            if tuple(vc + Y2) in self.occ:
-                cell.trims.add(Trim.BACK)
-            if tuple(vc - Y2) in self.occ:
-                cell.trims.add(Trim.FRONT)
+                spacing = p2(cell.cell_scale)
 
-            attic = (tuple(vc + X + Y + Z) in self.occ,
-                     tuple(vc + X - Y + Z) in self.occ,
-                     tuple(vc - X + Y + Z) in self.occ,
-                     tuple(vc - X - Y + Z) in self.occ,
-                     )
+                if tuple(vc + NE * spacing) in self.occ:
+                    cell.trims.add(Trim.NE)
+                if tuple(vc + NW * spacing) in self.occ:
+                    cell.trims.add(Trim.NW)
+                if tuple(vc + SW * spacing) in self.occ:
+                    cell.trims.add(Trim.SW)
+                if tuple(vc + SE * spacing) in self.occ:
+                    cell.trims.add(Trim.SE)
 
-            basement = (tuple(vc + X + Y - Z) in self.occ,
-                        tuple(vc + X - Y - Z) in self.occ,
-                        tuple(vc - X + Y - Z) in self.occ,
-                        tuple(vc - X - Y - Z) in self.occ,
-                        )
+                # TODO: needs the rest of these
+                attic = (tuple(vc + E + Z) in self.occ , # and Crop.TOP not in self.occ[tuple(vc + E + Z)].crops,
+                         tuple(vc + N + Z) in self.occ,
+                         tuple(vc + W + Z) in self.occ,
+                         tuple(vc + S + Z) in self.occ,
+                         )
 
-            cell.weld_up = all(attic)
-            # cell.weld_down = all(basement) or True
-            cell.point_down = False
-            cell.point_up = False
+                basement = (tuple(vc + X + Y - Z) in self.occ,
+                            tuple(vc + X - Y - Z) in self.occ,
+                            tuple(vc - X + Y - Z) in self.occ,
+                            tuple(vc - X - Y - Z) in self.occ,
+                            )
+
+                cell.weld_up = all(attic)
+
+                cell.point_down = False
+                cell.point_up = False
 
             # cell.point_up = not any(attic) or tuple(vc + 2 * Z) in self.occ
 
@@ -228,33 +341,53 @@ class OctoGrid:
 
     # TODO
     def four_way(self):
-        to_add = set()
-        for x, y, z in self.occ:
+        to_add = dict()
+
+        for center, cell in self.occ.items():
             # print("old", x, y, z)
-            # new_center = (x, y, z)
-            # new_center = (x, y, z)
-            # new_center = (x, y, z)
+            x, y, z = center
+
+            # to_add[(x, y, z)] = copy(cell)
+            to_add[(y, x, z)] = copy(cell)
+            to_add[(-x, y, z)] = copy(cell)
+            to_add[(y, -x, z)] = copy(cell)
+
+            # to_add[(y, x, z)] = cell
+
+            # new_center = (z + 2 + y, z + x + 2 * y, round(-x / 2 + -y / 2))
             # print("new", new_center)
 
-            to_add.add((-x, y, z))
-            to_add.add((x, -y, z))
-            to_add.add((-x, -y, z))
+            # to_add.add(new_center)
+            # to_add.add((x, y, -z))
+
         for center in to_add:
             if center not in self.occ:
                 self.occ[center] = OctoCell(False)
+        self.occ = {**self.occ, **to_add}
 
     def six_way(self):
-        to_add = set()
-        for x, y, z in self.occ:
-            print("old", x, y, z)
+        to_add = dict()
 
-            new_center = (z + 2 + y, z + x + 2 * y, round(-x / 2 + -y / 2))
-            print("new", new_center)
+        for center, cell in self.occ.items():
+            # print("old", x, y, z)
+            x, y, z = center
 
-            to_add.add(new_center)
-            to_add.add((x, y, -z))
+            # to_add[(x, y, z)] = copy(cell)
+            to_add[(x, z, y)] = copy(cell)
+            to_add[(z, y, x)] = copy(cell)
+            # to_add[(y, z, x)] = copy(cell)
+            # to_add[(z, x, y)] = copy(cell)
+            # to_add[(z, y, x)] = copy(cell)
+            # to_add[(y, x, z)] = cell
+
+            # new_center = (z + 2 + y, z + x + 2 * y, round(-x / 2 + -y / 2))
+            # print("new", new_center)
+
+            # to_add.add(new_center)
+            # to_add.add((x, y, -z))
+
         for center in to_add:
             if center not in self.occ:
                 self.occ[center] = OctoCell(False)
-
+        self.occ = {**self.occ, **to_add}
         self.four_way()
