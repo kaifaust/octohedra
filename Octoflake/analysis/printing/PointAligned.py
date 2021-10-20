@@ -1,14 +1,12 @@
 # from printing.octo.builder.OctoFlake import OctoFlakeBuilder
 import functools
-import random
 from pathlib import Path
 
 from euclid3 import Vector3
 
 from printing.octo import OctoConfigs
-from printing.octo.OctoCell import Crop
 from printing.octo.OctoGrid import OctoGrid
-from printing.octo.OctoUtil import p2, E, N, W, S, UP, DOWN
+from printing.octo.OctoUtil import p2
 from printing.octo.builder.OldOctoBuilder import OldOctoBuilder
 
 builder = OldOctoBuilder()
@@ -77,7 +75,10 @@ grid = OctoGrid()
 def multi_scale_tower(base_i, base_scale):
     z = 0
     for i in range(base_i, 0, -1):
-        grid.make_flake(i, Vector3(0, 0, z), cell_scale=max(0, base_scale - (base_i - i)), overwrite=True)
+        grid.make_flake(i,
+                        Vector3(0, 0, z),
+                        cell_scale=max(0, base_scale - (base_i - i)),
+                        overwrite=True)
 
         z += p2(i)
 
@@ -86,22 +87,22 @@ def face_flake(i, center=None, scale_ne=0, scale_nw=0, scale_sw=0, scale_se=0):
     ne_grid = OctoGrid()
     ne_grid.make_flake(i, center, scale_ne)
     ne_grid.crop(x_min=0, y_min=0)
-    print(ne_grid.occ.keys())
+    # print(ne_grid.occ.keys())
 
     nw_grid = OctoGrid()
     nw_grid.make_flake(i, center, scale_nw)
     nw_grid.crop(x_max=0, y_min=0)
-    print(nw_grid.occ.keys())
+    # print(nw_grid.occ.keys())
 
     sw_grid = OctoGrid()
     sw_grid.make_flake(i, center, scale_sw)
     sw_grid.crop(x_max=0, y_max=0)
-    print(ne_grid.occ.keys())
+    # print(ne_grid.occ.keys())
 
     se_grid = OctoGrid()
     se_grid.make_flake(i, center, scale_se)
     se_grid.crop(x_min=0, y_max=0)
-    print(se_grid.occ.keys())
+    # print(se_grid.occ.keys())
 
     # sw_grid = OctoGrid().make_flake(i, center, scale_sw)
     # [tuple(center)].crops.update({Crop.SOUTH, Crop.WEST})
@@ -110,7 +111,6 @@ def face_flake(i, center=None, scale_ne=0, scale_nw=0, scale_sw=0, scale_se=0):
     # ne_grid[tuple(center)].crops.update({Crop.SOUTH, Crop.WEST})
 
     return [ne_grid, nw_grid, sw_grid, se_grid]
-
 
 
 # i = 1
@@ -168,22 +168,22 @@ def face_flake(i, center=None, scale_ne=0, scale_nw=0, scale_sw=0, scale_se=0):
 
 # def face_flake(i, )
 
-i = 5
+i = 6
 
 # grid.make_flake(i)
 
 grids = face_flake(i, scale_ne=3, scale_nw=2, scale_sw=1, scale_se=0)
-
-
+#
+#
 grid = functools.reduce(OctoGrid.merge, grids)
 grid.crop(z_min=0)
 
 config = OctoConfigs.config_25
 # config = OctoConfigs.render_testing
-config.absolute_layers_per_cell = 16
+config.absolute_layers_per_cell = 4
 config.derive()
 
-
+# print(grid.occ)
 grid.compute_trimming()
 mesh = grid.render(config)
 
@@ -203,8 +203,6 @@ mesh.save(Path.home() / "Desktop" / f"derp.stl")
 # print(grid.occ)
 
 
-
-
 # config = OctoConfigs.render_testing
-# config.print_settings()
+config.print_settings()
 # config.print_derived_values()

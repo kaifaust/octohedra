@@ -1,14 +1,13 @@
 from enum import Enum
 from pathlib import Path
 
-from euclid3 import Vector3
-
 import numpy as np
+from euclid3 import Vector3
 from stl import Mesh
 
 from printing.octo import OctoConfigs
 from printing.octo.OctoConfig import OctoConfig
-from printing.octo.OctoUtil import E, N, W, S, CARDINAL, UP, DOWN, p2, SQRT22, SQRT2
+from printing.octo.OctoUtil import CARDINAL, DOWN, E, N, S, SQRT2, SQRT22, UP, W, p2
 from printing.rendering.RenderUtils import seal_belt, stitch_belts
 
 
@@ -17,7 +16,7 @@ def auto_str(cls):
         return '%s(%s)' % (
             type(self).__name__,
             ', '.join('%s=%s' % item for item in vars(self).items())
-        )
+            )
 
     cls.__str__ = __str__
     cls.__repr__ = __str__
@@ -55,18 +54,11 @@ class Trim(Enum):
     SE = 10
 
 
-
-
 @auto_str
 class OctoCell:
     """
-    Represents an abstract octahedron within an OctoGrid. It's size is relative to its coordinates in the grid,
-    not its physical size.
-
-
-
-
-
+    Represents an abstract octahedron within an OctoGrid. It's size is relative to its
+    coordinates in the grid, not its physical size.
     """
 
     def __init__(self,
@@ -77,12 +69,12 @@ class OctoCell:
                  is_solid=False,
                  trims=None,
                  weld_up=False,
-                 weld_down=False,
+                 weld_down=False,  # TODO: Deprecate
                  point_up=False,
                  point_down=False,
                  is_point_aligned=False,
-                 is_dummy = False,
-                 is_subcell = False
+                 is_dummy=False,
+                 is_subcell=False
                  ):
 
         self.cell_scale = cell_scale
@@ -99,22 +91,18 @@ class OctoCell:
         self.is_dummy = is_dummy
         self.is_subcell = is_subcell
 
-
-
         if self.is_pyramid:
             self.crops.add(Crop.BOTTOM)
 
     def __copy__(self):
         return OctoCell(cell_scale=self.cell_scale)
 
-
-    def render(self, config: OctoConfig, center):
+    def render(self, config: OctoConfig, center=None):
+        center = center if center is not None else Vector3(0, 0, 0)
 
         if self.is_dummy:
             print("Not rendering because I'm a dummy")
             return Mesh()
-
-
 
         overlap = config.overlap
 
@@ -122,18 +110,23 @@ class OctoCell:
 
         slit = config.slit if not self.is_subcell else 0
 
-        trim = (overlap + slit / 2)/2
+        trim = (overlap + slit / 2) / 2
         weld = overlap + slit / 2
 
         top = oversize / 2 * UP
         bottom = oversize / 2 * DOWN
 
-        top_belt = top + overlap/2 * (CARDINAL + DOWN)
-        bottom_belt = bottom + overlap/2 * (CARDINAL + UP)
+        # top_belt = top + overlap  * (CARDINAL + DOWN)
+        top_belt = top + overlap / 2 * (CARDINAL + DOWN)
+        bottom_belt = bottom + overlap / 2 * (CARDINAL + UP)
 
         equator_belt = CARDINAL * oversize / 2
         equator_upper_belt = equator_belt + trim * (UP - CARDINAL)
         equator_lower_belt = equator_belt + trim * (DOWN - CARDINAL)
+
+        flange = config.floor_height
+        upper_flange_belt = equator_belt + flange * SQRT22 * (UP - CARDINAL)
+        lower_flange_belt = equator_belt + flange * SQRT22 * (UP - CARDINAL)
 
         # print(config.cell_size, oversize, equator_belt)
 
@@ -151,57 +144,63 @@ class OctoCell:
             top_welding_lower_belt = top + weld * (CARDINAL + DOWN)
 
             upper_belts = [top_welding_upper_belt, top_welding_lower_belt, equator_upper_belt]
+        elif self.point_up:
+            pointy_belt = \
+                top \
+                + config.line_width * CARDINAL \
+                # + config.layer_height * DOWN
+            slipped_belt = top + overlap * (CARDINAL + DOWN)
+            upper_belts = [pointy_belt, slipped_belt, equator_upper_belt]
         else:
             upper_belts = [top_belt, equator_upper_belt]
+            # upper_belts = [pointy_belt, top_belt, equator_upper_belt]
 
         if Crop.BOTTOM in self.crops:
-            pass
+
+            upper_belts.append(upper_flange_belt)
+            upper_belts.append(lower_flange_belt)
+
         elif self.is_solid:
             equator_belt += DOWN * oversize
         elif self.weld_down:
             down_welding_upper_belt = bottom + weld * (CARDINAL + UP)
-            down_welding_lower_belt = bottom + weld * CARDINAL
-
+            down_welding_lower_belt = bottom + weld * CARDINAL + overlap / 2 * (CARDINAL + UP)
             lower_belts = [equator_lower_belt, down_welding_upper_belt, down_welding_lower_belt]
         else:
             lower_belts = [equator_lower_belt, bottom_belt]
 
-        # upper_belts = [top_upper_belt, top_lower_belt, equator_upper_belt]
-        # lower_belts = [equator_lower_belt, bottom_upper_belt, bottom_lower_belt]
+        flange_scooch= trim/2 - flange * SQRT22/2
 
-        # belts = [equator_belt, equator_upper_belt, equator_lower_belt, top_upper_belt, top_lower_belt,
-        #          bottom_upper_belt, bottom_lower_belt, up_welding_belt_top, up_welding_belt_bottom, down_welding_belt_top,
-        #          down_welding_belt_bottom]
-        # upper_belts = [equator_upper_belt, top_upper_belt, top_lower_belt, up_welding_belt_top, up_welding_belt_bottom]
-        # lower_belts = [equator_lower_belt, bottom_upper_belt, bottom_lower_belt, down_welding_belt_top,
-        #                down_welding_belt_bottom]
+        if not self.is_solid:  # and Crop.TOP not in self.crops and Crop.BOTTOM not in self.crops:
 
-        # if Crop.TOP in self.crops:
-        #     upper_belts = []
-        # if Crop.BOTTOM in self.crops:
-        #     lower_belts = []
+            if Trim.NE in self.trims:  # or self.cell_scale>0:
+                if Crop.BOTTOM not in self.crops:
+                    equator_belt[0] -= (N + E) * trim / 2
+                    equator_belt[1] -= (N + E) * trim / 2
+                upper_flange_belt[0] -= (N + E) * flange_scooch
+                upper_flange_belt[1] -= (N + E) * flange_scooch
 
-        if not self.is_solid and Crop.TOP not in self.crops and Crop.BOTTOM not in self.crops:
-            if Trim.NE in self.trims:# or self.cell_scale>0:
-                equator_belt[0] -= (N + E) * trim/2
-                equator_belt[1] -= (N + E) * trim/2
-            if Trim.NW in self.trims:# or self.cell_scale>0:
-                equator_belt[1] -= (N + W) * trim/2
-                equator_belt[2] -= (N + W) * trim/2
-            if Trim.SW in self.trims:# or self.cell_scale>0:
-                equator_belt[2] -= (S + W) * trim/2
-                equator_belt[3] -= (S + W) * trim/2
-            if Trim.SE in self.trims:# or self.cell_scale>0:
-                equator_belt[3] -= (S + E) * trim/2
-                equator_belt[0] -= (S + E) * trim/2
-
-        # if Crop.UP in self.crops:
-        #     for belt in upper_belts:
-        #         belt[:, 2] = 0
-        #
-        # if Crop.DOWN in self.crops:
-        #     for belt in lower_belts:
-        #         belt[:, 2] = 0
+            if Trim.NW in self.trims:  # or self.cell_scale>0:
+                if Crop.BOTTOM not in self.crops:
+                    equator_belt[1] -= (N + W) * trim / 2
+                    equator_belt[2] -= (N + W) * trim / 2
+                upper_flange_belt[1] -= (N + W) * flange_scooch
+                upper_flange_belt[2] -= (N + W) * flange_scooch
+            if Trim.SW in self.trims:  # or self.cell_scale>0:
+                if Crop.BOTTOM not in self.crops:
+                    equator_belt[2] -= (S + W) * trim / 2
+                    equator_belt[3] -= (S + W) * trim / 2
+                upper_flange_belt[2] -= (S + W) * flange_scooch
+                upper_flange_belt[3] -= (S + W) * flange_scooch
+                # TODO: Moving the belts back to upright (Do I care?)
+                lower_flange_belt[2] += (S + W) * flange * SQRT22/2
+                lower_flange_belt[3] += (S + W) * flange * SQRT22/2
+            if Trim.SE in self.trims:  # or self.cell_scale>0:
+                if Crop.BOTTOM not in self.crops:
+                    equator_belt[3] -= (S + E) * trim / 2
+                    equator_belt[0] -= (S + E) * trim / 2
+                upper_flange_belt[3] -= (S + E) * flange_scooch
+                upper_flange_belt[0] -= (S + E) * flange_scooch
 
         belts = np.array(upper_belts + [equator_belt] + lower_belts)
 
@@ -219,90 +218,18 @@ class OctoCell:
                 belt[3][0] = 0
                 belt[3][1] = 0
 
-        # belts = np.array(upper_belts + [equator_belt] + lower_belts)
-
-        # belts = [top_belt, equator_belt]
-
         faces = [seal_belt(belts[0])]
         for i in range(len(belts) - 1):
             faces.append(stitch_belts(belts[i], belts[i + 1]))
 
         faces.append(seal_belt(belts[-1], is_bottom=True))
 
-        # faces.append(seal_belt(top_upper_belt))
-        # faces.append(stitch_belts(top_upper_belt, top_lower_belt))
-        # faces.append(stitch_belts(top_lower_belt, equator_upper_belt))
-        # faces.append(stitch_belts(equator_upper_belt, equator_belt))
-        # faces.append(stitch_belts(equator_belt, equator_lower_belt))
-        # faces.append(stitch_belts(equator_lower_belt, bottom_upper_belt))
-        # faces.append(stitch_belts(bottom_upper_belt, bottom_lower_belt))
-
-        # faces.append(seal_belt(bottom_lower_belt, is_bottom=True))
-
-        # if self.is_solid:
-        #     faces.append(seal_belt(top_solid_belt))
-        #     faces.append(stitch_belts(top_solid_belt, bottom_solid_belt))
-        #     faces.append(seal_belt(bottom_solid_belt, bottom=True))
-        # elif self.is_pyramid:
-        #     if self.point_up:
-        #         faces.append(stitch_belt_to_point(top, equator_belt))
-        #         faces.append(seal_belt(equator_belt, bottom=True))
-        #     else:
-        #         faces.append(seal_belt(top_belt))
-        #         faces.append(stitch_belts(top_belt, equator_belt))
-        #         faces.append(seal_belt(equator_belt, bottom=True))
-        # else:  # Is a complete octo
-        #     if Trim.FRONT in cell.trims:
-        #         equator_belt[: 2, 1] = equator_top_belt[0, 1]
-        #     if Trim.BACK in cell.trims:
-        #         equator_belt[2:, 1] = equator_top_belt[2, 1]
-        #     if Trim.RIGHT in cell.trims:
-        #         equator_belt[1: 3, 0] = equator_top_belt[1, 0]
-        #     if Trim.LEFT in cell.trims:
-        #         equator_belt[3, 0] = equator_top_belt[0, 0]
-        #         equator_belt[0, 0] = equator_top_belt[0, 0]
-        #
-        #     # Top half
-        #     if cell.weld_up:
-        #         faces.append(seal_belt(up_welding_belt_top))
-        #         faces.append(stitch_belts(up_welding_belt_top, up_welding_belt_bottom))
-        #         faces.append(stitch_belts(up_welding_belt_bottom, equator_top_belt))
-        #         faces.append(stitch_belts(equator_top_belt, equator_belt))
-        #         faces.append(stitch_belts(equator_belt, equator_bottom_belt))
-        #     elif cell.point_up:
-        #         faces.append(stitch_belt_to_point(top, equator_top_belt))
-        #         faces.append(stitch_belts(equator_top_belt, equator_belt))
-        #         faces.append(stitch_belts(equator_belt, equator_bottom_belt))
-        #     else:  # snipped top
-        #         faces.append(seal_belt(top_belt))
-        #         faces.append(stitch_belts(top_belt, equator_top_belt))
-        #         faces.append(stitch_belts(equator_top_belt, equator_belt))
-        #         faces.append(stitch_belts(equator_belt, equator_bottom_belt))
-        #
-        #     # Bottom half
-        #     if cell.weld_down:
-        #         faces.append(stitch_belts(equator_bottom_belt, down_welding_belt_top))
-        #         # faces.append(self.seal_belt(down_welding_belt_top))
-        #         faces.append(stitch_belts(down_welding_belt_top, down_welding_belt_bottom))
-        #         # faces.append(self.seal_belt(down_welding_belt_bottom, bottom=True))
-        #         faces.append(stitch_belt_to_point(cropped_bottom, down_welding_belt_bottom, bottom=True))
-        #
-        #
-        #     elif cell.point_down:
-        #         faces.append(stitch_belt_to_point(bottom, equator_bottom_belt, bottom=True))
-        #     else:  # Snipped bottom
-        #         faces.append(stitch_belts(equator_bottom_belt, bottom_belt))
-        #         faces.append(seal_belt(bottom_belt, bottom=True))
-        #
-        # if Crop.UP in cell.crops:
-        #     pass
-
         # Make the faces into a mesh
         face_array = np.concatenate(faces)
         octo = Mesh(np.zeros(face_array.shape[0], dtype=Mesh.dtype))
         octo.vectors = face_array
         octo.update_normals()
-        octo.translate(Vector3(*center) * config.cell_size/2) #/SQRT2)
+        octo.translate(Vector3(*center) * config.cell_size / 2)  # /SQRT2)
 
         # Todo, scale
 
@@ -311,14 +238,21 @@ class OctoCell:
 
 def test_basic_render():
     cell = OctoCell(
-        crops={Crop.WEST},
-        # trims={Trim.SW},
-        weld_up=True,
-        weld_down=True,
+            # crops={Crop.BOTTOM},
+            trims={Trim.SW},
+            # weld_up=True,
+            weld_down=True,
+            # point_up=True,
 
-        is_point_aligned=True)
+            is_point_aligned=True)
     config = OctoConfigs.config_25
-    cell.render(config).save(Path.home() / "Desktop" / "derp.stl")
+    config.absolute_layers_per_cell = 8
+    config.absolute_overlap = 1
+    config.derive()
+    config.print_settings()
+
+    filename = Path.home() / "Desktop" / "derp.stl"
+    cell.render(config).save(str(filename))
 
 
 def testing():

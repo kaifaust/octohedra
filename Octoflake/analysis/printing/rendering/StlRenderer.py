@@ -57,7 +57,7 @@
 #     if bottom:
 #         faces = np.flip(faces, 1)
 #
-#     return faces
+#     return
 #
 #
 # class StlRenderer:

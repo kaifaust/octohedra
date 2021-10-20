@@ -9,6 +9,7 @@ def p2(i, o=0):
 
 SQRT2 = math.sqrt(2)
 SQRT22 = SQRT2 / 2
+SQRT32 = math.sqrt(3)/2
 
 X = Vector3(1, 0, 0)
 Y = Vector3(0, 1, 0)

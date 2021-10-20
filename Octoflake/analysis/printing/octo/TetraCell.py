@@ -2,8 +2,8 @@ import numpy as np
 from euclid3 import Vector3
 from stl import Mesh
 
-from printing.octo.OctoCell import OctoCell
-from printing.octo.OctoGrid import OctoGrid
+from printing.octo.OctoConfig import OctoConfig
+from printing.octo.OctoUtil import DOWN, E, N, S, SQRT2, SQRT22, SQRT32, UP, W
 from printing.rendering import RenderUtils
 
 
@@ -13,27 +13,38 @@ class TetraCell:
     """
 
     def __init__(self):
-        pass
+        self.is_dummy = False
 
-    def render(self, center: Vector3, to_slopes_up=False, cell_size=10):
+
+    def render(self, config:OctoConfig, center: Vector3):
         x, y, z = tuple(center)
         center_arr = np.array(tuple(center))
+        spacing = config.cell_size/4
+        overlap = config.overlap
 
         print(x, y, z, x - y + z % 2)
 
-        if x - y + z % 2 == 0:
-            b1 = Vector3(-1, -1, -1) * cell_size
-            b2 = Vector3(1, 1, -1) * cell_size
+        tetra_size = spacing  + config.overlap/2 # SQRT2/4 *  (config.cell_size)
+        tetra_scooch = overlap /2
+        if x - y + z % 2 == 1:
 
-            t2 = Vector3(1, -1, 1) * cell_size
-            t1 = Vector3(-1, 1, 1) * cell_size
+            b1 = Vector3(-1, -1, -1) * tetra_size + tetra_scooch * (N + E + 2 * UP)
+            b2 = Vector3(1, 1, -1) * tetra_size + tetra_scooch * (S + W + 2 * UP)
+
+            t2 = Vector3(1, -1, 1) * tetra_size + tetra_scooch * (N + W)
+            t1 = Vector3(-1, 1, 1) * tetra_size + tetra_scooch * (S + E)
 
         else:
-            b1 = Vector3(1, -1, -1) * cell_size
-            b2 = Vector3(-1, 1, -1) * cell_size
+            b1 = Vector3(1, -1, -1) * tetra_size
+            b2 = Vector3(-1, 1, -1) * tetra_size
 
-            t2 = Vector3(1, 1, 1) * cell_size
-            t1 = Vector3(-1, -1, 1) * cell_size
+            t2 = Vector3(1, 1, 1) * tetra_size
+            t1 = Vector3(-1, -1, 1) * tetra_size
+
+
+        ba = b1
+
+
 
         faces = np.array([
             [b1, b2, t2],
@@ -49,15 +60,19 @@ class TetraCell:
         mesh = Mesh(np.zeros(face_array.shape[0], dtype=Mesh.dtype))
         mesh.vectors = face_array
         mesh.update_normals()
-        print(center * cell_size)
-        mesh.translate(center * cell_size)  # /SQRT2)
+        center = Vector3(*center)
+        print(center)
+        print(tetra_size)
+        print(spacing)
+        print(center * spacing)
+        mesh.translate(center * spacing)  # /SQRT2)
 
         # Todo, scale
 
         return mesh
 
 
-def testing():
+def single_cell_testing():
     tetra = TetraCell()
 
     mesh1 = tetra.render(Vector3(1, 1, 1))
@@ -69,4 +84,4 @@ def testing():
 
 
 if __name__ == "__main__":
-    testing()
+    single_cell_testing()

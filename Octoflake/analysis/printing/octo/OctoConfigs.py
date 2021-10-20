@@ -1,9 +1,10 @@
 import math
 
-from printing.octo.OctoConfig import PrinterOctoConfigBuilder, OctoConfig
+from printing.octo.OctoConfig import OctoConfig, OctoConfig
+from printing.octo.OctoUtil import SQRT2
 
-render_testing = OctoConfig(10, 3, 0.1)
-no_overlap = OctoConfig(10, 0, 0)
+# render_testing = OctoConfig(10, 3, 0.1)
+# no_overlap = OctoConfig(10, 0, 0)
 
 # config_2 = PrinterOctoConfigBuilder(
 #     nozzle=0.2,
@@ -14,14 +15,34 @@ no_overlap = OctoConfig(10, 0, 0)
 # )
 #
 # Best so far
-config_25 = PrinterOctoConfigBuilder(
-    nozzle=0.25,
-    nozzle_width_multiplier=1.3,
-    line_layer_ratio=2,
-    first_layer_multiplier=.5,
-    absolute_layers_per_cell=8,
-    absolute_slit=0.001
-)
+
+
+line_width = 0.25 * 1.3
+layer_height = line_width / 2
+overlap = 3.99 * layer_height
+
+config_25 = OctoConfig(
+        nozzle=0.25,
+        nozzle_width_multiplier=1.3,
+        line_layer_ratio=2,
+        first_layer_multiplier=.5,
+        # absolute_overlap= overlap,
+        absolute_layers_per_cell=8,
+        absolute_slit=0.001
+        )
+config_25_double_bottom = OctoConfig(
+        nozzle=0.25,
+        nozzle_width_multiplier=1.3,
+        line_layer_ratio=2,
+        first_layer_multiplier=.5,
+        absolute_overlap= overlap,
+        solid_layers=2,
+        absolute_layers_per_cell=8,
+        absolute_slit=0.001
+        )
+
+
+
 #
 # config_3 = PrinterOctoConfigBuilder(
 #     nozzle=0.3,
@@ -31,17 +52,17 @@ config_25 = PrinterOctoConfigBuilder(
 #     absolute_layers_per_cell=5,
 # )
 
-config_3_thin = PrinterOctoConfigBuilder(
-    nozzle=0.3,
-    nozzle_width_multiplier=2,
-    line_layer_ratio= 6,
-    first_layer_multiplier=1.5,
-    # absolute_layers_per_cell=20,
-    line_overlap=1,
-    target_overlap_cell_ratio=5,
-    Speed=5,
-    Temp=190
-)
+config_3_thin = OctoConfig(
+        nozzle=0.3,
+        nozzle_width_multiplier=2,
+        line_layer_ratio=6,
+        first_layer_multiplier=1.5,
+        # absolute_layers_per_cell=20,
+        line_overlap=1,
+        target_overlap_cell_ratio=5,
+        Speed=5,
+        Temp=190
+        )
 
 # config_4 = PrinterOctoConfigBuilder(
 #     nozzle=0.4,
@@ -59,16 +80,16 @@ config_3_thin = PrinterOctoConfigBuilder(
 #     absolute_layers_per_cell=16,
 # )
 #
-config_8 = PrinterOctoConfigBuilder(
-    nozzle=0.8,
-    # nozzle_width_multiplier=1.3,  # .35/.25,
-    absolute_line_width= 1,
-    line_layer_ratio=2,
-    first_layer_multiplier=1,
-    absolute_layers_per_cell=8,
-    line_overlap=1,
-    absolute_slit=.001
-)
+config_8 = OctoConfig(
+        nozzle=0.8,
+        # nozzle_width_multiplier=1.3,  # .35/.25,
+        absolute_line_width=1,
+        line_layer_ratio=2,
+        first_layer_multiplier=1,
+        absolute_layers_per_cell=8,
+        line_overlap=1,
+        absolute_slit=.001
+        )
 #
 # config_transparent_8 = PrinterOctoConfigBuilder(
 #     nozzle=0.8,
