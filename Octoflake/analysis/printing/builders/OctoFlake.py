@@ -27,11 +27,11 @@ class OctoFlake(OctoBuilder):
 
     def materialize_flake(self, grid: OctoGrid, i, c):
         if i == 0:
-            grid.insert_cell(c)
+            grid.insert_cell(center=c)
             return
 
         for direction in (E, N, W, S, UP, DOWN):
-            self.materialize_flake(grid, i - 1, c + p2(i - 1) * direction)
+            self.materialize_flake(grid, i - 1, c + p2(i - 1) * 2 * direction)
 
     @classmethod
     def make_flake(cls, iteration: int, center: Vector3 = None, cell_scale=0):
@@ -41,9 +41,9 @@ class OctoFlake(OctoBuilder):
 
 def testing():
     builder = OctoBuilder.builder()
-    builder += OctoFlake.make_flake(3)
+    builder += OctoFlake.make_flake(1)
 
-    RenderUtils.render_grid(builder.materialize(), config_25)
+    RenderUtils.render_4_8_layers(builder.materialize(), config_25)
 
 
 if __name__ == "__main__":

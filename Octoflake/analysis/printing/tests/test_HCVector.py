@@ -92,7 +92,6 @@ class TestHCV(TestCase):
         print(a)
 
     def test_rational_input(self):
-
         vec1 = HCV(int64(1), 2, 3)
         vec2 = HCV(1, 2, 3)
 

@@ -3,7 +3,6 @@ import numpy as np
 from printing.utils.OctoConfig import OctoConfig
 
 
-
 def stitch_belt_to_point(point, belt, is_bottom=False):
     faces = np.array([
         [belt[0], belt[1], point],
@@ -16,7 +15,6 @@ def stitch_belt_to_point(point, belt, is_bottom=False):
         faces = np.flip(faces, 1)
 
     return faces
-
 
 
 def stitch_belts(top_belt, bottom_belt):
@@ -46,14 +44,17 @@ def seal_belt(belt, is_bottom=False):
 
 class GridCell:
 
-    def __init__(self, center):
-        self.center = center
+    def __init__(self):
+        self.crops = set()
+        self.trims = set()
 
-    def render(self, config: OctoConfig):
+
+
+
+
+
+    def render(self, center, config: OctoConfig):
         raise NotImplementedError()
-
-
-
 
 # def testing():
 #     top_belt = [1, 2, 3]

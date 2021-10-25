@@ -18,7 +18,7 @@ class OctoStar(OctoBuilder):
         builder = OctoStar()
 
         core_flake = OctoFlake.make_flake(iteration, center)
-        outer_flake = OctoFlake.make_flake(iteration - 1, center + Vector3(0, 0, p2(iteration)))
+        outer_flake = OctoFlake.make_flake(iteration - 1, center + Vector3(0, 0, p2(iteration + 1)))
 
         builder.children.add(core_flake)
         builder.children.add(outer_flake)

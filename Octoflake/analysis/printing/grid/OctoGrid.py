@@ -4,8 +4,10 @@ import numpy as np
 from euclid3 import *
 from stl import mesh
 
+from printing.grid.GridCell import GridCell
 from printing.grid.OctoCell import Crop, OctoCell, Trim
 from printing.utils.HCVector import HCV
+from printing.utils.OctoConfigs import config_25
 from printing.utils.OctoUtil import DOWN, E, N, NE, NW, S, SE, SW, UP, W, Z, p2
 from printing.grid.TetraCell import TetraCell
 from printing.utils import OctoConfigs, RenderUtils
@@ -71,62 +73,63 @@ class OctoGrid:
     #     self.make_flake(i2, (center[0], center[1] + 2 * offset, center[2] - offset))
     #     self.make_flake(i2, (center[0], center[1] - 2 * offset, center[2] - offset))
 
-    def faces(self,
-              iteration,
-              starting_iteration=1000,
-              ending_iteration=0,
-              tetra_left=False,
-              tetra_right=True,
-              center=(0, 0, 0)
-              ):
-
-        center = np.array(center)
-
-        offset = 2 ** iteration
-        si = starting_iteration
-        ei = ending_iteration
-        if iteration <= starting_iteration:
-            self.make_flake(iteration, center=center)
-
-        if iteration > ending_iteration:
-
-            if tetra_right:
-                self.faces(iteration - 1, si, ei, False, True, center + (offset, 0, offset / 2))
-            if tetra_right:
-                self.faces(iteration - 1, si, ei, False, True, center + (-offset, 0, offset / 2))
-            if tetra_left:
-                self.faces(iteration - 1, si, ei, True, False, center + (0, offset, offset / 2))
-            if tetra_left:
-                self.faces(iteration - 1, si, ei, True, False, center + (0, -offset, offset / 2))
-            if tetra_left:
-                self.faces(iteration - 1, si, ei, True, False, center + (offset, 0, -offset / 2))
-            if tetra_left:
-                self.faces(iteration - 1, si, ei, True, False, center + (-offset, 0, -offset / 2))
-            if tetra_right:
-                self.faces(iteration - 1, si, ei, False, True, center + (0, offset, -offset / 2))
-            if tetra_right:
-                self.faces(iteration - 1, si, ei, False, True, center + (0, -offset, -offset / 2))
+    # TODO: Move to an OctoBuilder
+    # def faces(self,
+    #           iteration,
+    #           starting_iteration=1000,
+    #           ending_iteration=0,
+    #           tetra_left=False,
+    #           tetra_right=True,
+    #           center=(0, 0, 0)
+    #           ):
+    #
+    #     center = np.array(center)
+    #
+    #     offset = 2 ** iteration
+    #     si = starting_iteration
+    #     ei = ending_iteration
+    #     if iteration <= starting_iteration:
+    #         self.make_flake(iteration, center=center)
+    #
+    #     if iteration > ending_iteration:
+    #
+    #         if tetra_right:
+    #             self.faces(iteration - 1, si, ei, False, True, center + (offset, 0, offset / 2))
+    #         if tetra_right:
+    #             self.faces(iteration - 1, si, ei, False, True, center + (-offset, 0, offset / 2))
+    #         if tetra_left:
+    #             self.faces(iteration - 1, si, ei, True, False, center + (0, offset, offset / 2))
+    #         if tetra_left:
+    #             self.faces(iteration - 1, si, ei, True, False, center + (0, -offset, offset / 2))
+    #         if tetra_left:
+    #             self.faces(iteration - 1, si, ei, True, False, center + (offset, 0, -offset / 2))
+    #         if tetra_left:
+    #             self.faces(iteration - 1, si, ei, True, False, center + (-offset, 0, -offset / 2))
+    #         if tetra_right:
+    #             self.faces(iteration - 1, si, ei, False, True, center + (0, offset, -offset / 2))
+    #         if tetra_right:
+    #             self.faces(iteration - 1, si, ei, False, True, center + (0, -offset, -offset / 2))
 
     # TODO: This should be moved to a higher level octobuilder
 
-    def clear_octo(self, m, x=0, y=0, z=0, center=None):
-        print(f"Clearing everything in an octo of size {m} centered at {center}")
-        for i in range(-m, m + 1):
-            for j in range(-m, m + 1):
-                for k in range(-m, m + 1):
-
-                    yz = abs(j) + abs(k) <= m
-                    zx = abs(k) + abs(i) <= m
-
-                    if yz and zx:
-                        c = tuple(Vector3(i, j, k) + center)
-                        # print(c)
-                        # print(self.occ.pop(tuple(c), None))
-                        # self.occ[c] = OctoCell()
-                        # c = (i, j, k)
-                        if c in self.occ:
-                            # print(f"removing {c}")
-                            self.occ.pop(c)
+    # def clear_octo(self, m, x=0, y=0, z=0, center=None):
+    #     print(f"Clearing everything in an octo of size {m} centered at {center}")
+    #     for i in range(-m, m + 1):
+    #         for j in range(-m, m + 1):
+    #             for k in range(-m, m + 1):
+    #
+    #                 yz = abs(j) + abs(k) <= m
+    #                 zx = abs(k) + abs(i) <= m
+    #
+    #                 if yz and zx:
+    #                     c = tuple(Vector3(i, j, k) + center)
+    #                     # print(c)
+    #                     # print(self.occ.pop(tuple(c), None))
+    #                     # self.occ[c] = OctoCell()
+    #                     # c = (i, j, k)
+    #                     if c in self.occ:
+    #                         # print(f"removing {c}")
+    #                         self.occ.pop(c)
 
     def keep_octo(self, m, center):
         to_keep = dict()
@@ -167,13 +170,7 @@ class OctoGrid:
             return
         if iteration == cell_scale:
             # print("Inserting real cell at", center)
-            self.insert_cell(center, cell_scale, overwrite=overwrite)
-        elif iteration > cell_scale:
-            pass
-            # print("inserting dummy at", center)
-            # self.insert_cell(center, iteration, is_dummy=True)
-        elif iteration == 0:
-            self.insert_cell(center, iteration, is_dummy=True)
+            self.insert_cell(center)
 
         i1 = iteration - 1
         o = p2(i1)
@@ -183,58 +180,39 @@ class OctoGrid:
 
         return self
 
-    def insert_cell(self,
-                    center,
-                    cell_scale=0,
-                    is_subcell=False,
-                    overwrite=False,
-                    is_dummy=False
-                    ):
+    def insert_cell(self, x=0, y=0, z=0, center=None):
+        if center is not None:
+            x, y, z = center
 
-        m = p2(cell_scale)
+        assert x == int(x)
+        assert y == int(y)
+        assert z == int(z)
 
-        is_clear = True
-        for i in range(-m, m + 1):
-            for j in range(-m, m + 1):
-                for k in range(-m, m + 1):
+        cell = None
+        if z % 4 == 0:
+            if x % 4 == 2 and y % 4 == 0 or x % 4 == 0 and y % 4 == 2:
+                cell = OctoCell()
+        elif z % 4 == 2:
+            if x % 4 == 0 and y % 4 == 0 or x % 4 == 2 and y % 4 == 2:
+                cell = OctoCell()
+        elif x % 2 == 1 and y % 2 == 1:
+            cell = TetraCell()
 
-                    xy = abs(i) + abs(j) <= m
-                    yz = abs(j) + abs(k) <= m
-                    zx = abs(k) + abs(i) <= m
 
-                    if yz and zx and xy:
-                        c = tuple(Vector3(i, j, k) + center)
-                        if c in self.occ:
-                            is_clear = False
 
-        # if cell_scale == 2:
-        #     print(is_clear, overwrite)
-        if is_clear or overwrite:
-            cell = OctoCell(cell_scale=cell_scale,
-                            center=center,
-                            is_subcell=is_subcell,
-                            is_dummy=is_dummy)
-
-            hcv = HCV(center)
-
-            self.occ[hcv] = cell
-
-        # if cell_scale == 0:
-        #     return
-
-        # r = p2(cell_scale)
-        # for z in range(-r, r + 1):
-        #     hr = r - abs(z) - 1
-        #     for x in range(-hr, hr + 1, 2):
-        #         for y in range(-hr, hr + 1, 2):
-        #             c = Vector3(*center) + (x, y, z)
-        #             self.occ[tuple(c)] = OctoCell(is_dummy=True)
+        if cell is not None:
+            self.occ[(x, y, z)] = cell
+        # else:
+        #     raise Exception(f"You tried to insert a cell at {x, y, z}")
 
     def render(self, config):
         mesh_data = [
             cell.render(config, center).data
             for center, cell in self.occ.items()
             ]
+
+        if len(mesh_data) == 0:
+            raise Exception("No objects to render!")
 
         return mesh.Mesh(np.concatenate(mesh_data), remove_empty_areas=True)
 
@@ -291,49 +269,76 @@ class OctoGrid:
 
     def compute_trimming(self):
         for center, cell in self.occ.items():
+            if isinstance(cell, TetraCell):
+                self.trim_tetra(cell, center)
+            elif isinstance(cell, OctoCell):
+                self.trim_octo(cell, center)
+            else:
+                raise Exception("WTF are you doing bro?")
 
-            vc = Vector3(*center)
+    def trim_tetra(self, cell, center):
+        c = Vector3(*center)
+        x, y, z = c
+        trims = set()
 
-            spacing = p2(cell.cell_scale)
+        flip = 1 if (x + y + z) % 4 == 3 else -1
+        o_wsw = tuple(c + -Z * flip + SW + 2 * W)
+        o_ssw = tuple(c + -Z * flip + SW + 2 * S)
+        o_ese = tuple(c + Z * flip + SE + 2 * E)
+        o_sse = tuple(c + Z * flip + SE + 2 * S)
+        o_wnw = tuple(c + Z * flip + NW + 2 * W)
+        o_nnw = tuple(c + Z * flip + NW + 2 * N)
+        o_ene = tuple(c + -Z * flip + NE + 2 * E)
+        o_nne = tuple(c + -Z * flip + NE + 2 * N)
 
-            if tuple(vc + NE * spacing) in self.occ:
-                cell.trims.add(Trim.NE)
-            if tuple(vc + NW * spacing) in self.occ:
-                cell.trims.add(Trim.NW)
-            if tuple(vc + SW * spacing) in self.occ:
-                cell.trims.add(Trim.SW)
-            if tuple(vc + SE * spacing) in self.occ:
-                cell.trims.add(Trim.SE)
 
-            # TODO: needs the rest of these
-            attic = (tuple(vc + E + Z) in self.occ,
-                     # and Crop.TOP not in self.occ[tuple(vc + E + Z)].crops,
-                     tuple(vc + N + Z) in self.occ,
-                     tuple(vc + W + Z) in self.occ,
-                     tuple(vc + S + Z) in self.occ,
-                     )
 
-            basement = (tuple(vc + E - Z) in self.occ,
-                        tuple(vc + N - Z) in self.occ,
-                        tuple(vc + W - Z) in self.occ,
-                        tuple(vc + S - Z) in self.occ
-                        )
 
-            # TODO: For vertical cropping, we need the notion of a clipped upper point
+        if o_wsw in self.occ or o_ssw in self.occ:
+            trims.add(Trim.SW)
+        if o_ese in self.occ or o_sse in self.occ:
+            trims.add(Trim.SE)
+        if o_wnw in self.occ or o_nnw in self.occ:
+            trims.add(Trim.NW)
+        if o_ene in self.occ or o_nne in self.occ:
+            trims.add(Trim.NE)
 
-            # TODO: Remove if this basement approach works
-            # cell.weld_down = True
-            # for oc in basement:
-            #     if oc not in self.occ:
-            #         cell.weld_down = False
-            #         break
-            #     # else:
-            #     for other_cell in self.occ[oc]:
-            #         if Crop.BOTTOM not in other_cell.crops:
-            #             cell.weld_down = False
+        cell.trims = trims
 
-            cell.weld_up = all(attic)
-            cell.weld_down = all(basement)
+    def trim_octo(self, cell, center):
+        vc = Vector3(*center)
+
+        spacing = 2
+
+        if tuple(vc + NE * spacing) in self.occ:
+            cell.trims.add(Trim.NE)
+        if tuple(vc + NW * spacing) in self.occ:
+            cell.trims.add(Trim.NW)
+        if tuple(vc + SW * spacing) in self.occ:
+            cell.trims.add(Trim.SW)
+        if tuple(vc + SE * spacing) in self.occ:
+            cell.trims.add(Trim.SE)
+
+        # TODO: needs the rest of these
+        attic = (tuple(vc + (E + Z) * spacing) in self.occ,
+                 # and Crop.TOP not in self.occ[tuple(vc + E + Z)].crops,
+                 tuple(vc + (N + Z) * spacing) in self.occ,
+                 tuple(vc + (W + Z) * spacing) in self.occ,
+                 tuple(vc + (S + Z) * spacing) in self.occ,
+                 tuple(vc + 2 * Z * spacing) in self.occ
+                 )
+
+        basement = (tuple(vc + (E - Z) * spacing) in self.occ,
+                    # and Crop.TOP not in self.occ[tuple(vc + E + Z)].crops,
+                    tuple(vc + (N - Z) * spacing) in self.occ,
+                    tuple(vc + (W - Z) * spacing) in self.occ,
+                    tuple(vc + (S - Z) * spacing) in self.occ,
+                    )
+
+        # TODO: For vertical cropping, we need the notion of a clipped upper point
+
+        cell.weld_up = all(attic)
+        cell.weld_down = all(basement)
 
     def carve(self, x_min, x_max, y_min, y_max, z_min, z_max):
         """Removes all cells in a rectangular prism"""
@@ -344,6 +349,15 @@ class OctoGrid:
 
         for tup in to_purge:
             self.occ[tup].is_solid = True
+
+    def reflect(self, x=1, y=1, z=1):
+
+        rv = Vector3(x, y, z)
+        new_occ = dict()
+        for center, cell in self.occ.items():
+            new_occ[Vector3(*center) * rv] = cell
+
+        self.occ = new_occ
 
     def four_way(self):
         to_add = dict()
@@ -378,9 +392,53 @@ class OctoGrid:
 def tetra_test():
     grid = OctoGrid()
 
-    grid.make_flake(1)
-    grid.insert_cell(HCV(1,1,1.5))
-    grid.occ[HCV(1, 1, 1)] = TetraCell()
+    # grid.make_flake(1)
+    grid.insert_cell(center=(2, 0, 0))
+    grid.insert_cell(center=(0, 2, 0))
+    grid.insert_cell(center=(6, 0, 0))
+    grid.insert_cell(center=(2, -2, 2))
+    grid.insert_cell(center=(6, 2, 2))
+    grid.insert_cell(center=(3, 1, 1))
+    grid.insert_cell(center=(3, 1, -1))
+
+    grid.compute_trimming()
+    print(grid.occ[(3, 1, 1)].trims)
+    # grid.insert_cell(center=(1, -1, 1))
+    # grid.insert_cell(center=(3, 1, 1))
+    # grid.insert_cell(center=(3, -1, 1))
+
+
+
+    # grid.insert_cell(center=(0, 2, 0))
+    #
+    # grid.insert_cell(center=(-2, 0, 0))
+    # grid.insert_cell(center=(4, 2, 0))
+    # # grid.insert_cell(center=(0, 2, 0))
+    # grid.occ[(2,0,0)].trims = {Trim.NE, Trim.NW, Trim.SW, Trim.SE}
+    # grid.insert_cell(center=(0, -2, 0))
+    # grid.insert_cell(center=(0, 0, 2))
+
+
+    # grid.insert_cell(center=[1, 1, 1])
+    # grid.insert_cell(center=[-1, 1, 1])
+    # grid.insert_cell(center=[1, -1, 1])
+    # grid.insert_cell(center=[-1, -1, 1])
+    # grid.insert_cell(center=[1, 1, -1])
+    # grid.insert_cell(center=[-1, 1, -1])
+    # grid.insert_cell(center=[1, -1, -1])
+    # grid.insert_cell(center=[-1, -1, -1])
+
+    # grid.occ[(1, 1, 1)].trims = {Trim.NE, Trim.NW, Trim.SW, Trim.SE}
+
+    # grid.occ[(1, 1, -1)].trims = {Trim.NE, Trim.NW, Trim.SW, Trim.SE}
+
+    # grid.insert_cell(center=[1, 1, -1])
+
+    # grid.insert_cell(center=[1, -1, -1])
+    # grid.insert_cell(center=[-1, 1, 1])
+    # grid.insert_cell(center=[-1, -1, -1])
+
+    # grid.occ[HCV(1, 1, 1)] = TetraCell()
     # grid.occ[(-1, 1, 1)] = {TetraCell()}
     # grid.occ[(1, -1, 1)] = {TetraCell()}
 
@@ -388,10 +446,7 @@ def tetra_test():
     # grid.occ.pop((0, 0, 1))
     # grid.occ.pop((1, 0, 0))
 
-    grid.crop(z_min=0)
-    config = OctoConfigs.config_25
-
-    RenderUtils.save_meshes(grid.render(config))
+    RenderUtils.render_grid(grid, config_25, z_min=None)
 
 
 if __name__ == "__main__":

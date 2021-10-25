@@ -14,9 +14,7 @@ from printing.utils.OctoConfig import OctoConfig
 # Best so far
 
 
-line_width = 0.25 * 1.3
-layer_height = line_width / 2
-overlap = 3.99 * layer_height
+
 
 config_25 = OctoConfig(
         name="0.25mm nozzle",
@@ -24,12 +22,16 @@ config_25 = OctoConfig(
         nozzle_width_multiplier=1.3,
         line_layer_ratio=2,
         first_layer_multiplier=.5,
-        # absolute_overlap= overlap,
         absolute_layers_per_cell=8,
         absolute_slit=0.001
         )
 
+line_width = 0.25 * 1.3
+layer_height = line_width / 2
+overlap = 3.99 * layer_height
+
 config_25_double_bottom = OctoConfig(
+        name="0.25mm nozzle, double bottom",
         nozzle=0.25,
         nozzle_width_multiplier=1.3,
         line_layer_ratio=2,

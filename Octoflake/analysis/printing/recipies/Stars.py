@@ -1,7 +1,6 @@
-from printing.utils.OctoUtil import p2
 from printing.builders.OldOctoBuilder import OldOctoBuilder
-from printing.builders.OctoTowerBuilder import OctoTowerBuilder
 from printing.utils import OctoConfigs, RenderUtils
+from printing.utils.OctoUtil import p2
 
 # i = 6
 
@@ -79,7 +78,7 @@ from printing.utils import OctoConfigs, RenderUtils
 base_layers = 4
 base_i = 5
 
-for i in range(1, base_i+1):
+for i in range(3, base_i+1):
 
     star_builder = OldOctoBuilder()
     star_builder.stellate(i, (0, 0, 0))
@@ -95,7 +94,7 @@ exit()
 
 i = 4
 
-tower_builder = OctoTowerBuilder()
+# tower_builder = OctoTowerBuilder()
 # tower_builder.simple_tower(i, (0, 0, 0))
 
 def temple_complex(i, x, y, min_i = 1):

@@ -28,8 +28,22 @@ class OldOctoBuilder(OctoBuilder):
     def stellate(self, iteration, center=None, offset=None):
         offset = 2 ** (iteration) if offset is None else offset
         center = center if center is not None else (0,0,0)
-        si = iteration-1
-        self.make_flake(iteration, center)
+        si = iteration-2
+        # self.make_flake(iteration, center)
+
+        self.make_flake(si, (center[0] + offset, center[1], center[2] + offset))
+        self.make_flake(si, (center[0] - offset, center[1], center[2] + offset))
+        self.make_flake(si, (center[0], center[1]+offset, center[2] + offset))
+        self.make_flake(si, (center[0], center[1]-offset, center[2] + offset))
+
+        o2 = offset * 2
+        self.make_flake(si, (center[0] + o2, center[1], center[2]))
+        self.make_flake(si, (center[0] - o2, center[1], center[2] + 0))
+        self.make_flake(si, (center[0], center[1] + o2, center[2] + 0))
+        self.make_flake(si, (center[0], center[1] - o2, center[2] + 0))
+        self.make_flake(si, (center[0], center[1], center[2] + o2))
+        self.make_flake(si, (center[0], center[1], center[2] - o2))
+
 
         self.make_flake(si, (center[0] + offset, center[1] + offset, center[2]))
         self.make_flake(si, (center[0] + offset, center[1] - offset, center[2]))

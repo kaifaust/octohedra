@@ -2,72 +2,103 @@ import numpy as np
 from euclid3 import Vector3
 from stl import Mesh
 
+from printing.grid.GridCell import GridCell, seal_belt, stitch_belts
+from printing.grid.OctoCell import Trim
+from printing.utils.HCVector import HCV
 from printing.utils.OctoConfig import OctoConfig
-from printing.utils.OctoUtil import E, N, S, UP, W
-from printing.utils import RenderUtils
+from printing.utils.OctoUtil import DOWN, E, N, S, UP, W
+from printing.utils import OctoConfigs, RenderUtils
 
 
-class TetraCell:
+class TetraCell(GridCell):
     """
     This is a tetrahedral cell in the tetra-octa honeycomb
     """
 
     def __init__(self):
-        self.is_dummy = False
+        super().__init__()
 
     # TODO: Make a render config that decouples the printer config details from the geometry
-    def render(self, config:OctoConfig, center: Vector3):
-        x, y, z = tuple(center)
-        center_arr = np.array(tuple(center))
-        spacing = config.cell_size/4
+    def render(self, config: OctoConfig, center):
+
+        x, y, z = center
+        spacing = config.cell_size / 4
         overlap = config.overlap
+        tetra_size = config.cell_size / 4 + config.overlap / 2
 
-        print(x, y, z, x - y + z % 2)
+        # start by assuming that the SW->NE line is on bottom
+        bsw = Vector3(-1, -1, -1) * tetra_size
+        bne = Vector3(1, 1, -1) * tetra_size
 
-        tetra_size = spacing  + config.overlap/2 # SQRT2/4 *  (config.cell_size)
-        tetra_scooch = overlap /2
-        if x - y + z % 2 == 1:
+        tnw = Vector3(-1, 1, 1) * tetra_size
+        tse = Vector3(1, -1, 1) * tetra_size
 
-            b1 = Vector3(-1, -1, -1) * tetra_size + tetra_scooch * (N + E + 2 * UP)
-            b2 = Vector3(1, 1, -1) * tetra_size + tetra_scooch * (S + W + 2 * UP)
+        # TODO: Add another belt so there aren't overlapping faces?
+        top_belt = [
+            tnw + overlap / 2 * Vector3(1, 0, -1),
+            tnw + overlap / 2 * Vector3(0, -1, -1),
+            tse + overlap / 2 * Vector3(-1, 0, -1),
+            tse + overlap / 2 * Vector3(0, 1, -1),
+            ]
 
-            t2 = Vector3(1, -1, 1) * tetra_size + tetra_scooch * (N + W)
-            t1 = Vector3(-1, 1, 1) * tetra_size + tetra_scooch * (S + E)
+        top_bottom_belt = [
+            tnw + overlap * Vector3(1, 0, -1),
+            tnw + overlap * Vector3(0, -1, -1),
+            tse + overlap * Vector3(-1, 0, -1),
+            tse + overlap * Vector3(0, 1, -1),
+            ]
 
-        else:
-            b1 = Vector3(1, -1, -1) * tetra_size
-            b2 = Vector3(-1, 1, -1) * tetra_size
+        bottom_belt = [
+            bne + overlap / 2 * Vector3(-1, 0, 1),
+            bsw + overlap / 2 * Vector3(0, 1, 1),
+            bsw + overlap / 2 * Vector3(1, 0, 1),
+            bne + overlap / 2 * Vector3(0, -1, 1),
 
-            t2 = Vector3(1, 1, 1) * tetra_size
-            t1 = Vector3(-1, -1, 1) * tetra_size
+            ]
 
+        bottom_top_belt = [
+            bne + overlap * Vector3(-1, 0, 1),
+            bsw + overlap * Vector3(0, 1, 1),
+            bsw + overlap * Vector3(1, 0, 1),
+            bne + overlap * Vector3(0, -1, 1),
 
-        ba = b1
+            ]
 
+        slit = config.slit
+        trim = (overlap + slit / 2) / 2
 
+        if Trim.NE in self.trims:
+            bottom_belt[0] -= (N + E) * trim / 2
+            bottom_belt[3] -= (N + E) * trim / 2
+        if Trim.NW in self.trims:
+            top_belt[0] -= (N + W) * trim / 2
+            top_belt[1] -= (N + W) * trim / 2
+        if Trim.SW in self.trims:
+            bottom_belt[1] -= (S + W) * trim / 2
+            bottom_belt[2] -= (S + W) * trim / 2
+        if Trim.SE in self.trims:
+            top_belt[2] -= (S + E) * trim / 2
+            top_belt[3] -= (S + E) * trim / 2
 
-        faces = np.array([
-            [b1, b2, t2],
-            [b2, b1, t1],
-            [t2, b2, t1],
-            [t1, b1, t2]
-        ])
+        faces = [seal_belt(top_belt)]
+        faces.append(stitch_belts(top_belt, top_bottom_belt))
+        faces.append(stitch_belts(top_bottom_belt, bottom_top_belt))
+        faces.append(stitch_belts(bottom_top_belt, bottom_belt))
 
-        # print(faces)
+        faces.append(seal_belt(bottom_belt, is_bottom=True))
 
-        face_array = faces  # np.concatenate(faces)
+        face_array = np.concatenate(faces)
+
+        if (x + y + z) % 4 == 1:
+            face_array = face_array * np.array((1, 1, -1))
+            face_array = np.flip(face_array, 1)
 
         mesh = Mesh(np.zeros(face_array.shape[0], dtype=Mesh.dtype))
         mesh.vectors = face_array
         mesh.update_normals()
-        center = Vector3(*center)
-        print(center)
-        print(tetra_size)
-        print(spacing)
-        print(center * spacing)
-        mesh.translate(center * spacing)  # /SQRT2)
 
-        # Todo, scale
+        center = Vector3(*center)
+        mesh.translate(center * spacing)
 
         return mesh
 
@@ -75,8 +106,9 @@ class TetraCell:
 def single_cell_testing():
     tetra = TetraCell()
 
-    mesh1 = tetra.render(Vector3(1, 1, 1))
-    mesh2 = tetra.render(Vector3(1, -1, 3), to_slopes_up=True)
+    config = OctoConfigs.config_25
+    mesh1 = tetra.render(config, Vector3(1, 1, 1))
+    mesh2 = tetra.render(config, Vector3(1, 1, -1))
 
     # octo1 = OctoCell().render()
 
