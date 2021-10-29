@@ -159,7 +159,7 @@ def test_fill_sector():
 
     grid.compute_trimming()
 
-    RenderUtils.render_grid(grid, z_min=0, filename="detailed_core.stl")
+    RenderUtils.render_grid(grid, z_min=0, base_filename="detailed_core.stl")
 
 
 # builder.detailed_core_sector_v2(grid, i, Vector3(0,0,0), UNE)

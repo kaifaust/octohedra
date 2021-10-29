@@ -26,32 +26,33 @@ config_25 = OctoConfig(
         absolute_slit=0.001
         )
 
-line_width = 0.25 * 1.3
-layer_height = line_width / 2
-overlap = 3.99 * layer_height
+line_width = 0.26
+layer_height = 0.13
+# overlap = 3.99 * layer_height
 
 config_25_double_bottom = OctoConfig(
         name="0.25mm nozzle, double bottom",
         nozzle=0.25,
-        nozzle_width_multiplier=1.3,
-        line_layer_ratio=2,
-        first_layer_multiplier=.5,
-        absolute_overlap= overlap,
-        solid_layers=2,
+        absolute_line_width=0.26,
+        absolute_layer_height=0.13,
+        first_layer_multiplier=1.5,
+        # absolute_overlap= overlap,
+        solid_layers=1,
         absolute_layers_per_cell=8,
         absolute_slit=0.001
         )
 
 
 
-#
-# config_3 = PrinterOctoConfigBuilder(
-#     nozzle=0.3,
-#     nozzle_width_multiplier=1,
-#     line_layer_ratio=math.sqrt(2),
-#     first_layer_multiplier=.5,
-#     absolute_layers_per_cell=5,
-# )
+
+config_3 = OctoConfig(
+    nozzle=0.3,
+    nozzle_width_multiplier=1.3,
+    line_layer_ratio=2,
+    first_layer_multiplier=.5,
+    absolute_layers_per_cell=8,
+    absolute_slit = 0.001
+)
 
 config_3_thin = OctoConfig(
         nozzle=0.3,

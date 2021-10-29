@@ -1,18 +1,30 @@
+from dataclasses import dataclass, field
 from functools import reduce
 
 from printing.grid.OctoGrid import OctoGrid
+from printing.grid.OctoVector import OctoVector
 
 
+@dataclass
 class OctoBuilder:
     """Represents a generalized flake-like thing that knows how to materialize itself to an
     OctoGrid"""
 
-    def __init__(self):
-        self.children = set()
+    children: list = field(default_factory=list, repr=False)
+
+
+
+
 
     def __iadd__(self, other):
-        self.children.add(other)
+        self.add_child(other)
         return self
+
+    def __str__(self):
+        return str(self.children)
+
+    def add_child(self,child):
+        self.children.append(child)
 
     @classmethod
     def builder(cls):
@@ -40,7 +52,8 @@ class OctoBuilder:
         rectangular and
         octahedral regions. Any functionality beyond that should be in an OctoFlake subclass.
         """
-
+        if len(self.children) == 0:
+            return OctoGrid()
         sub_grids = [child.materialize_additive() for child in self.children]
 
         return reduce(OctoGrid.merge, sub_grids)

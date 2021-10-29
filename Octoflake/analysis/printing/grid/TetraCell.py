@@ -4,10 +4,8 @@ from stl import Mesh
 
 from printing.grid.GridCell import GridCell, seal_belt, stitch_belts
 from printing.grid.OctoCell import Trim
-from printing.utils.HCVector import HCV
-from printing.utils.OctoConfig import OctoConfig
-from printing.utils.OctoUtil import DOWN, E, N, S, UP, W
 from printing.utils import OctoConfigs, RenderUtils
+from printing.utils.OctoUtil import E, N, S, W
 
 
 class TetraCell(GridCell):
@@ -19,9 +17,12 @@ class TetraCell(GridCell):
         super().__init__()
 
     # TODO: Make a render config that decouples the printer config details from the geometry
-    def render(self, config: OctoConfig, center):
+    def render(self, config, center):
 
-        x, y, z = center
+        x = center.x
+        y = center.y
+        z = center.z
+
         spacing = config.cell_size / 4
         overlap = config.overlap
         tetra_size = config.cell_size / 4 + config.overlap / 2
@@ -80,12 +81,12 @@ class TetraCell(GridCell):
             top_belt[2] -= (S + E) * trim / 2
             top_belt[3] -= (S + E) * trim / 2
 
-        faces = [seal_belt(top_belt)]
-        faces.append(stitch_belts(top_belt, top_bottom_belt))
-        faces.append(stitch_belts(top_bottom_belt, bottom_top_belt))
-        faces.append(stitch_belts(bottom_top_belt, bottom_belt))
-
-        faces.append(seal_belt(bottom_belt, is_bottom=True))
+        faces = [seal_belt(top_belt),
+                 stitch_belts(top_belt, top_bottom_belt),
+                 stitch_belts(top_bottom_belt, bottom_top_belt),
+                 stitch_belts(bottom_top_belt, bottom_belt),
+                 seal_belt(bottom_belt, is_bottom=True)
+                 ]
 
         face_array = np.concatenate(faces)
 
@@ -97,8 +98,8 @@ class TetraCell(GridCell):
         mesh.vectors = face_array
         mesh.update_normals()
 
-        center = Vector3(*center)
-        mesh.translate(center * spacing)
+
+        mesh.translate(center.to_np() * spacing)
 
         return mesh
 

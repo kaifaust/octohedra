@@ -4,14 +4,14 @@ import numpy as np
 
 from printing.utils.OctoUtil import p2
 from printing.builders.OctoBuilder import OctoBuilder
-from printing.builders.OctoFlake import OctoFlake
+from printing.builders.FlakeBuilder import FlakeBuilder
 
 
 class OldOctoBuilder(OctoBuilder):
 
 
     def make_flake(self, i, c: Vector3 = None):
-        self.children.add(OctoFlake(i, c))
+        self.children.add(FlakeBuilder(i, c))
 
     # def materialize(self, grid=None, bonus_i=0):
     #     grid = OctoGrid() if grid is None else grid

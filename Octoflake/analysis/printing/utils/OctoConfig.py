@@ -68,11 +68,15 @@ class OctoConfig:
 
     def derive(self):
 
-        self.line_width = round(self.nozzle * self.nozzle_width_multiplier, self.decimals) \
+        self.line_width = self.nozzle * self.nozzle_width_multiplier \
             if self.absolute_line_width is None else self.absolute_line_width
 
-        self.layer_height = round(self.line_width / self.line_layer_ratio, self.decimals) \
+        self.line_width = round(self.line_width, self.decimals)
+
+        self.layer_height = self.line_width / self.line_layer_ratio \
             if self.absolute_layer_height is None else self.absolute_layer_height
+
+        self.layer_height = round(self.layer_height, self.decimals)
 
         self.first_layer_height = self.layer_height * self.first_layer_multiplier
 
