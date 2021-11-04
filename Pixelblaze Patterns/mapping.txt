@@ -1,0 +1,304 @@
+
+
+numElements = 18
+
+
+var elements = array(19)
+
+
+var bigUrchin = 0
+var tinyCrevice = 1
+var leftEmbeddedCrystal = 2
+var caveUrchin = 3 
+var caveCrevice = 4
+var cavePyramid = 5
+var rightEmbeddedCrystal =6
+var rightLongCrevice =7 
+var roofUrchin = 8
+var roofCrevice = 9
+var rightSmallCrevice = 10
+var caveBackCevice = 11
+var lightingBar = 12
+var topsideUrchin = 13
+var topsideStar = 14
+var rightPixyTower =15
+var topsidePyramid =16
+var citadel = 17
+var leftPixyTower = 18
+
+var urchinCount = 4
+var urchins = array(urchinCount)
+urchins[0] = bigUrchin
+urchins[1] = caveUrchin
+urchins[2] = roofUrchin
+urchins[3] = topsideUrchin
+
+var creviceCount = 6
+var crevices = array(creviceCount)
+crevices[0] = tinyCrevice
+crevices[1] = caveCrevice
+crevices[2] = rightLongCrevice
+crevices[3] = roofCrevice
+crevices[4] = rightSmallCrevice
+crevices[5] = caveBackCevice
+
+
+
+var min = 0
+var max = 1
+
+elements[bigUrchin] = array(4)
+elements[bigUrchin][0] = 0
+elements[bigUrchin][1] = 16
+elements[bigUrchin][2] = 0.5
+elements[bigUrchin][3] = true
+
+elements[tinyCrevice] = array(4)
+elements[tinyCrevice][0] = 17
+elements[tinyCrevice][1] = 20
+elements[tinyCrevice][2] = 0.5
+elements[tinyCrevice][3] = true
+
+elements[leftEmbeddedCrystal] = array(4)
+elements[leftEmbeddedCrystal][0] = 21
+elements[leftEmbeddedCrystal][1] = 48
+elements[leftEmbeddedCrystal][2] = 0.5
+elements[leftEmbeddedCrystal][3] = false
+
+elements[caveUrchin] = array(4)
+elements[caveUrchin][0] = 49
+elements[caveUrchin][1] = 94
+elements[caveUrchin][2] = 0.5
+elements[caveUrchin][3] = false
+
+
+elements[caveCrevice] = array(4)
+elements[caveCrevice][0] = 95
+elements[caveCrevice][1] = 107
+elements[caveCrevice][2] = 0.5
+elements[caveCrevice][3] = false
+
+elements[cavePyramid] = array(4)
+elements[cavePyramid][0] = 108
+elements[cavePyramid][1] = 116
+elements[cavePyramid][2] = 0.5
+elements[cavePyramid][3] = false
+
+
+elements[rightEmbeddedCrystal] = array(4)
+elements[rightEmbeddedCrystal][0] = 117
+elements[rightEmbeddedCrystal][1] = 144
+elements[rightEmbeddedCrystal][2] = 0.5
+elements[rightEmbeddedCrystal][3] = false
+
+elements[rightLongCrevice] = array(4)
+elements[rightLongCrevice][0] = 145
+elements[rightLongCrevice][1] = 165
+elements[rightLongCrevice][2] = 0.5
+elements[rightLongCrevice][3] = false
+
+elements[roofUrchin] = array(4)
+elements[roofUrchin][0] = 166
+elements[roofUrchin][1] = 169 // Ignoring the belt of GRB
+elements[roofUrchin][2] = 0.5
+elements[roofUrchin][3] = true
+
+
+elements[roofCrevice] = array(4)
+elements[roofCrevice][0] = 189
+elements[roofCrevice][1] = 205 
+elements[roofCrevice][2] = 0.5
+elements[roofCrevice][3] = false
+
+elements[rightSmallCrevice] = array(4)
+elements[rightSmallCrevice][0] = 206
+elements[rightSmallCrevice][1] = 208 
+elements[rightSmallCrevice][2] = 0.5
+elements[rightSmallCrevice][3] = true
+
+elements[caveBackCevice] = array(4)
+elements[caveBackCevice][0] = 209
+elements[caveBackCevice][1] = 211
+elements[caveBackCevice][2] = 0.5
+elements[caveBackCevice][3] = true
+
+elements[lightingBar] = array(4)
+elements[lightingBar][0] = 212
+elements[lightingBar][1] = 254
+elements[lightingBar][2] = 0.5
+elements[lightingBar][3] = false
+
+elements[topsideUrchin] = array(4)
+elements[topsideUrchin][0] = 255
+elements[topsideUrchin][1] = 261
+elements[topsideUrchin][2] = 0.5
+elements[topsideUrchin][3] = true
+
+elements[topsideStar] = array(4)
+elements[topsideStar][0] = 262
+elements[topsideStar][1] = 281
+elements[topsideStar][2] = 0.5
+elements[topsideStar][3] = false
+
+elements[rightPixyTower] = array(4)
+elements[rightPixyTower][0] = 282
+elements[rightPixyTower][1] = 331
+elements[rightPixyTower][2] = 0.5
+elements[rightPixyTower][3] = false
+
+elements[topsidePyramid] = array(4)
+elements[topsidePyramid][0] = 332
+elements[topsidePyramid][1] = 363
+elements[topsidePyramid][2] = 0.5
+elements[topsidePyramid][3] = false
+
+elements[citadel] = array(4)
+elements[citadel][0] = 364
+elements[citadel][1] = 380
+elements[citadel][2] = 0.5
+elements[citadel][3] = true
+
+elements[leftPixyTower] = array(4)
+elements[leftPixyTower][0] = 381
+elements[leftPixyTower][1] = 431
+elements[leftPixyTower][2] = 0.5
+elements[leftPixyTower][3] = false
+
+// Utilities
+function contains(index, elementIndex){
+  e = elements[elementIndex]
+  wtf = e
+  return (e[min] <= index) && (index <= e[max])
+  
+  
+}
+
+
+
+/////////////////////////////////////////////////////// Effects
+
+//////////////////////////Embedded Crystal effect
+
+var currentColor = random(1)
+var hueSweep = .6
+var sweepDuration = 1000
+var sweepRemaining = 1000
+var transferDuration = 1000
+var transferRemaining = 1000
+var heightLeft = 0
+var heightRight
+
+var esSweep = 0
+var esTransfer = 1
+var embeddedState = esSweep
+
+
+
+function embeddedBeforeRender(delta){
+  // sweepRemaining -= delta
+  // if (timeLeft < 0){
+  //   currentColor = random(1)
+  //   timeLeft = switchTime
+  // }
+}
+
+function embeddedRender(i){
+  if (contains(i, leftEmbeddedCrystal)){
+    ci = i - 
+    
+    hsv(currentColor, 1, 1)
+  } else if (contains(i, rightEmbeddedCrystal)){
+    hsv(currentColor + hueSweep, 1, 1)
+  } 
+}
+
+
+
+//////////////////////////// Crevices
+
+var crevicesCycleDuration= 1000
+var crevicesCycleRemaining = crevicesCycleDuration
+var crevicesCyclePosition = 0
+
+function crevicesBeforeRender(delta){
+  crevicesCycleRemaining -= delta
+  if (crevicesCycleRemaining <= 0){
+    crevicesCycleRemaining += crevicesCycleDuration
+  }
+  crevicesCyclePosition = (crevicesCycleRemaining % crevicesCycleDuration) / crevicesCycleDuration
+}
+
+function crevicesRender(index){
+  for (var i = 0; i < creviceCount; i++){
+    if (contains(index, crevices[i])){
+      hsv(crevicesCyclePosition, 1, 1)
+    }
+  }
+  
+}
+
+
+
+
+
+
+
+
+
+///////////////////////////////////////////////////////////////////// Execution!
+
+export function beforeRender(delta) {
+  embeddedBeforeRender(delta)
+}
+
+
+
+
+
+
+
+
+
+export function render(index) {
+  hsv(1, 1, 0.1)
+  embeddedRender(index)
+  crevicesRender(index)
+
+  // if (contains(i, leftEmbeddedCrystal) || contains(i, rightEmbeddedCrystal)){
+  //   embedded(i, 0)
+  // } else if (false){
+  //   hsv(.5, 1, 1)
+  // } else {
+  //   hsv(1, 1, 0.1)
+  // }
+  
+
+
+  // var defaultHue = 0
+  // var hue = defaultHue
+  // var value = 0
+
+  
+
+  // for (var i = 0; i < creviceCount; i++ ){
+  //   e = elements[crevices[i]]
+    
+  //   if (e[0] <= index && index <=  e[1] ){
+  //     hsv(.5, 1, 1)
+  //     break
+  //   } else {
+  //     wtf = index
+  //     hsv(1, 1, 0)
+  //   }
+  // }
+  
+  // if (elements[i][0] <= index && index <=  elements[i][1] ){
+  //   hue = elements[i][2]
+  //   value = 1
+  // }
+
+
+
+  // hsv(hue, 1, value)
+
+}
