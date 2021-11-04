@@ -1,42 +1,31 @@
 from dataclasses import dataclass
-from enum import Enum
 from pathlib import Path
 
 import numpy as np
-from stl import Mesh
 from trimesh import Trimesh
 
-from printing.grid.GridCell import GridCell, belts_to_trimesh, seal_belt, stitch_belts
+from printing.grid.GridCell import GridCell, belts_to_trimesh
 from printing.grid.OctoVector import OctoVector
 from printing.utils import OctoConfigs, RenderUtils
 from printing.utils.OctoConfig import OctoConfig
 from printing.utils.OctoUtil import CARDINAL, DOWN, E, N, S, SQRT22, UP, W
 
 
-class Crop(Enum):
-    TOP = 1
-    BOTTOM = 2
-    EAST = 3
-    NORTH = 4
-    WEST = 5
-    SOUTH = 6
-    NONE = 7
-
-
-class Trim(Enum):
-    # TOP = 1  # Unused
-    # BOTTOM = 2
-    # FRONT = 3
-    # BACK = 4
-    # LEFT = 5
-    # RIGHT = 6
-
-    NE = 7
-    NW = 8
-    SW = 9
-    SE = 10
-
-
+# class Crop(Enum):
+#     TOP = 1
+#     BOTTOM = 2
+#     EAST = 3
+#     NORTH = 4
+#     WEST = 5
+#     SOUTH = 6
+#     NONE = 7
+#
+#
+# class Trim(Enum):
+#     NE = 7
+#     NW = 8
+#     SW = 9
+#     SE = 10
 
 
 @dataclass
@@ -165,38 +154,33 @@ class OctoCell(GridCell):
                 belt[3][0] = 0
                 belt[3][1] = 0
 
-
-
-
         mesh = belts_to_trimesh(belts)
         if self.crop_bottom:
-            mesh+= belts_to_trimesh(np.array([lower_flange_belt, equator_belt]))
-
-
+            mesh += belts_to_trimesh(np.array([lower_flange_belt, equator_belt]))
 
         return mesh
 
-
-        faces = [seal_belt(belts[0])]
-        for i in range(len(belts) - 1):
-            faces.append(stitch_belts(belts[i], belts[i + 1]))
-
-        faces.append(seal_belt(belts[-1], is_bottom=True))
-
-        # Make the faces into a mesh
-        face_array = np.concatenate(faces)
-        # face_array.astype(np.float_)
-        # face_array = face_array.round(4)
-        octo = Mesh(np.zeros(face_array.shape[0], dtype=Mesh.dtype))
-        octo.vectors = face_array
-        octo.update_normals()
-        octo.translate(center.to_np() * config.cell_size / 4)  # /SQRT2)
-        # octo.rotate(np.array([0, 0, 1]), math.radians(45))
-
-        print("ooookay")
-        # Todo, scale
-
-        return octo
+        # TODO: Delete this
+        # faces = [seal_belt(belts[0])]
+        # for i in range(len(belts) - 1):
+        #     faces.append(stitch_belts(belts[i], belts[i + 1]))
+        #
+        # faces.append(seal_belt(belts[-1], is_bottom=True))
+        #
+        # # Make the faces into a mesh
+        # face_array = np.concatenate(faces)
+        # # face_array.astype(np.float_)
+        # # face_array = face_array.round(4)
+        # octo = Mesh(np.zeros(face_array.shape[0], dtype=Mesh.dtype))
+        # octo.vectors = face_array
+        # octo.update_normals()
+        # octo.translate(center.to_np() * config.cell_size / 4)  # /SQRT2)
+        # # octo.rotate(np.array([0, 0, 1]), math.radians(45))
+        #
+        # print("ooookay")
+        # # Todo, scale
+        #
+        # return octo
 
     def render_trimesh(self, config: OctoConfig, center=OctoVector()):
 

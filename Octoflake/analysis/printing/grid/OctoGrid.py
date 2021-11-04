@@ -2,16 +2,15 @@ from copy import copy
 from dataclasses import astuple
 
 import numpy as np
-import trimesh.util
 from euclid3 import *
 from stl import mesh
 
-from printing.grid.OctoCell import OctoCell, Trim
+from printing.grid.OctoCell import OctoCell
 from printing.grid.OctoVector import OctoVector
 from printing.grid.TetraCell import TetraCell
 from printing.utils import RenderUtils
 from printing.utils.OctoConfigs import config_25
-from printing.utils.OctoUtil import E, N, NE, NW, S, SE, SW, W, X, Y, Z, p2
+from printing.utils.OctoUtil import NE, NW, SE, SW, X, Y, Z, p2
 
 
 class OctoGrid:
@@ -41,6 +40,7 @@ class OctoGrid:
 
         self.occ = to_keep
 
+    # TODO: Move this to an OctoBuilders utility file?
     def fill(self, i, f_i, center=(0, 0, 0)):
 
         print(f_i)
@@ -56,7 +56,8 @@ class OctoGrid:
                 for y in range(-hr, hr + 1, 2):
                     c = Vector3(*center) + (s * x, s * y, s * z)
 
-                    self.make_flake(f_i, center=c)
+                    # This will need to refer to the grid, duh
+                    # self.make_flake(f_i, center=c)
 
     def insert_cell(self, center=None, x=0, y=0, z=0, strict=True):
         if center is None:
@@ -93,14 +94,14 @@ class OctoGrid:
 
         return mesh.Mesh(np.concatenate(mesh_data), remove_empty_areas=True)
 
-    def render_trimesh(self, config):
-        meshes = [
-            cell.render_trimesh(config, center)
-            for center, cell in self.occ.items()
-            ]
-
-        # noinspection PyTypeChecker
-        return trimesh.util.concatenate(meshes)
+    # def render_trimesh(self, config):
+    #     meshes = [
+    #         cell.render_trimesh(config, center)
+    #         for center, cell in self.occ.items()
+    #         ]
+    #
+    #     # noinspection PyTypeChecker
+    #     return trimesh.util.concatenate(meshes)
 
     def crop_bottom(self):
         self.crop(z_min=0)
@@ -173,33 +174,34 @@ class OctoGrid:
                 raise Exception("WTF are you doing bro?")
 
     def trim_tetra(self, cell, center):
-        c = center
-        x = center.x
-        y = center.y
-        z = center.z
-
-        trims = set()
-
-        flip = 1 if (x + y + z) % 4 == 3 else -1
-        o_wsw = c + -Z * flip + SW + 2 * W
-        o_ssw = (c + -Z * flip + SW + 2 * S)
-        o_ese = (c + Z * flip + SE + 2 * E)
-        o_sse = (c + Z * flip + SE + 2 * S)
-        o_wnw = (c + Z * flip + NW + 2 * W)
-        o_nnw = (c + Z * flip + NW + 2 * N)
-        o_ene = (c + -Z * flip + NE + 2 * E)
-        o_nne = (c + -Z * flip + NE + 2 * N)
-
-        if o_wsw in self.occ or o_ssw in self.occ:
-            trims.add(Trim.SW)
-        if o_ese in self.occ or o_sse in self.occ:
-            trims.add(Trim.SE)
-        if o_wnw in self.occ or o_nnw in self.occ:
-            trims.add(Trim.NW)
-        if o_ene in self.occ or o_nne in self.occ:
-            trims.add(Trim.NE)
-
-        cell.trims = trims
+        raise Exception("Yeah we're not doing it this way anymore")
+        # c = center
+        # x = center.x
+        # y = center.y
+        # z = center.z
+        #
+        # trims = set()
+        #
+        # flip = 1 if (x + y + z) % 4 == 3 else -1
+        # o_wsw = c + -Z * flip + SW + 2 * W
+        # o_ssw = (c + -Z * flip + SW + 2 * S)
+        # o_ese = (c + Z * flip + SE + 2 * E)
+        # o_sse = (c + Z * flip + SE + 2 * S)
+        # o_wnw = (c + Z * flip + NW + 2 * W)
+        # o_nnw = (c + Z * flip + NW + 2 * N)
+        # o_ene = (c + -Z * flip + NE + 2 * E)
+        # o_nne = (c + -Z * flip + NE + 2 * N)
+        #
+        # if o_wsw in self.occ or o_ssw in self.occ:
+        #     trims.add(Trim.SW)
+        # if o_ese in self.occ or o_sse in self.occ:
+        #     trims.add(Trim.SE)
+        # if o_wnw in self.occ or o_nnw in self.occ:
+        #     trims.add(Trim.NW)
+        # if o_ene in self.occ or o_nne in self.occ:
+        #     trims.add(Trim.NE)
+        #
+        # cell.trims = trims
 
     def trim_octo(self, cell, center):
         # vc = Vector3(*center)
@@ -314,22 +316,22 @@ class OctoGrid:
         return str(self.occ.keys())
 
 
-def tetra_test():
-    grid = OctoGrid()
-
-    # grid.make_flake(1)
-    grid.insert_cell(center=(2, 0, 0))
-    grid.insert_cell(center=(0, 2, 0))
-    grid.insert_cell(center=(6, 0, 0))
-    grid.insert_cell(center=(2, -2, 2))
-    grid.insert_cell(center=(6, 2, 2))
-    grid.insert_cell(center=(3, 1, 1))
-    grid.insert_cell(center=(3, 1, -1))
-
-    grid.compute_trimming()
-    print(grid.occ[(3, 1, 1)].trims)
-
-    RenderUtils.render_grid(grid, config_25, z_min=None)
+# def tetra_test():
+#     grid = OctoGrid()
+#
+#     # grid.make_flake(1)
+#     grid.insert_cell(center=(2, 0, 0))
+#     grid.insert_cell(center=(0, 2, 0))
+#     grid.insert_cell(center=(6, 0, 0))
+#     grid.insert_cell(center=(2, -2, 2))
+#     grid.insert_cell(center=(6, 2, 2))
+#     grid.insert_cell(center=(3, 1, 1))
+#     grid.insert_cell(center=(3, 1, -1))
+#
+#     grid.compute_trimming()
+#     print(grid.occ[(3, 1, 1)].trims)
+#
+#     RenderUtils.render_grid(grid, config_25, z_min=None)
 
 
 def reflection_test():

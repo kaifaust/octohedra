@@ -1,15 +1,12 @@
 import math
-from enum import Enum
 
 from euclid3 import Vector3
 
 from printing.builders.FlakeBuilder import FlakeBuilder
 from printing.builders.OctoBuilder import OctoBuilder
 from printing.grid.OctoVector import OctoVector
-from printing.utils.OctoUtil import X, Y, Z, p2
-
 from printing.utils import OctoConfigs
-from printing.grid.OctoGrid import OctoGrid
+from printing.utils.OctoUtil import X, Y, Z, p2
 from printing.utils.RenderUtils import render_grid
 
 INF = 100
@@ -63,7 +60,6 @@ class Tower(OctoBuilder):
             center += Z * p2(i + 1)
 
 
-
 class EvilTower(OctoBuilder):
 
     def __init__(self,
@@ -72,11 +68,15 @@ class EvilTower(OctoBuilder):
                  min_i=1,
                  max_evil=math.inf,
                  min_evil=1,
-                 elevate_base=True):
+                 elevate_base=False,
+                 contact_patch_i_offset=2
+                 ):
 
-        # base_size_i_offset = base_size_i_offset if base_size_i_offset is not None else base_i
         super().__init__()
-        c = center + Z * (0 if not elevate_base else p2(base_i+1) - p2(base_i-1))
+
+        if elevate_base:
+            center = center + Z * (p2(base_i + 1) - p2(base_i + 1 - contact_patch_i_offset))
+        c = center
 
         for i in range(base_i, min_i - 1, -1):
             self.add_child(FlakeBuilder(i, c))
@@ -91,23 +91,24 @@ class EvilTower(OctoBuilder):
                 self.add_child(Tower(i - 1, c - Y * t_o + t_z, min_i))
 
 
-
-
 class FlowerTower(OctoBuilder):
 
     def flower_tower(self,
                      base_i,
-                     growth_dirs=None,
                      center=None,
+                     growth_dirs=None,
                      min_i=1,
                      max_evil=math.inf,
-                     min_evil=3):
+                     min_evil=3,
+                     elevate_base=False,
+                     contact_patch_i_offset=-2
+                     ):
         all_dirs = {(1, 1), (1, -1), (-1, 1), (-1, -1)}
         growth_dirs = growth_dirs if growth_dirs is not None else all_dirs.copy()
-        print("Making a flower tower that grows in: ", growth_dirs)
+        # print("Making a flower tower that grows in: ", growth_dirs)
         c = center if center is not None else Vector3(0, 0, 0)
         for i in range(base_i, min_i - 1, -1):
-            self.flakes[tuple(c)] = i
+            self.add_child(FlakeBuilder(i, c))
             c += Z * p2(i)
             if min_evil <= i <= max_evil:
                 t_i = i - 1
@@ -152,7 +153,6 @@ def test():
     config = OctoConfigs.config_25_double_bottom
     # config.absolute_layers_per_cell = 16
     config.derive()
-
 
     render_grid(grid, config=config)
     config.print_settings()

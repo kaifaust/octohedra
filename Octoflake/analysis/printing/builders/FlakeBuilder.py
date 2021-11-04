@@ -1,29 +1,27 @@
 from dataclasses import dataclass
 
-from euclid3 import Vector3
-
-from printing.grid.OctoVector import OctoVector
-from printing.utils.OctoConfigs import config_25, config_3
-from printing.grid.OctoGrid import OctoGrid
-from printing.utils.OctoUtil import DOWN, ORIGIN, p2, S, E, W, UP, N
 from printing.builders.OctoBuilder import OctoBuilder
+from printing.grid.OctoGrid import OctoGrid
+from printing.grid.OctoVector import OctoVector
 from printing.utils import RenderUtils
+from printing.utils.OctoUtil import DOWN, E, N, S, UP, W, p2
 
 
 @dataclass
 class FlakeBuilder(OctoBuilder):
-    iteration: int = 0
+    iteration: int = 0  # This is, like, what size it is
     center: OctoVector = OctoVector()
+    scale: int = 0  # And this one represents how big the individual octos are
 
-    def __init__(self,
-                 iteration,
-                 center=OctoVector(),
-                 cell_scale=0  # TODO: Implement using tetras
-                 ):
-        super().__init__()
-        self.iteration = iteration
-        self.center = center
-        self.cell_scale = cell_scale
+    # def __init__(self,
+    #              iteration,
+    #              center=OctoVector(),
+    #              cell_scale=0  # TODO: Implement using tetras
+    #              ):
+    #     super().__init__()
+    #     self.iteration = iteration
+    #     self.center = center
+    #     self.cell_scale = cell_scale
 
     def materialize_additive(self, bonus_iteration=0):
         grid = OctoGrid()
@@ -42,8 +40,7 @@ class FlakeBuilder(OctoBuilder):
 def testing():
     grid = FlakeBuilder(4).materialize()
 
-    RenderUtils.render_4_8_layers(grid, config_3)
-    config_3.print_settings()
+    RenderUtils.render_4_8_layers(grid, )
 
 
 if __name__ == "__main__":

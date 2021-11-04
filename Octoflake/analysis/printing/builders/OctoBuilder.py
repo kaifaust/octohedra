@@ -2,7 +2,6 @@ from dataclasses import dataclass, field
 from functools import reduce
 
 from printing.grid.OctoGrid import OctoGrid
-from printing.grid.OctoVector import OctoVector
 
 
 @dataclass
@@ -10,11 +9,7 @@ class OctoBuilder:
     """Represents a generalized flake-like thing that knows how to materialize itself to an
     OctoGrid"""
 
-    children: list = field(default_factory=list, repr=False)
-
-
-
-
+    children: list = field(default_factory=list, repr=False, init=False)
 
     def __iadd__(self, other):
         self.add_child(other)

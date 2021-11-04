@@ -14,15 +14,24 @@ from printing.utils.OctoConfig import OctoConfig
 # Best so far
 
 
-
-
 config_25 = OctoConfig(
         name="0.25mm nozzle",
         nozzle=0.25,
         nozzle_width_multiplier=1.3,
         line_layer_ratio=2,
-        first_layer_multiplier=.5,
+        first_layer_multiplier=1.5,
         absolute_layers_per_cell=8,
+        absolute_slit=0.001
+        )
+
+config_25.print_settings()
+
+config_25_14_28 = OctoConfig(
+        name="0.25mm nozzle",
+        absolute_line_width=.32,
+        absolute_layer_height=.16,
+        first_layer_multiplier=1.5,
+        # absolute_layers_per_cell=8,
         absolute_slit=0.001
         )
 
@@ -42,17 +51,14 @@ config_25_double_bottom = OctoConfig(
         absolute_slit=0.001
         )
 
-
-
-
 config_3 = OctoConfig(
-    nozzle=0.3,
-    nozzle_width_multiplier=1.3,
-    line_layer_ratio=2,
-    first_layer_multiplier=.5,
-    absolute_layers_per_cell=8,
-    absolute_slit = 0.001
-)
+        nozzle=0.3,
+        nozzle_width_multiplier=1.3,
+        line_layer_ratio=2,
+        first_layer_multiplier=.5,
+        absolute_layers_per_cell=8,
+        absolute_slit=0.001
+        )
 
 config_3_thin = OctoConfig(
         nozzle=0.3,
