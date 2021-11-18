@@ -63,7 +63,7 @@ def testing_recursive():
 
 def testing():
     i = 3
-    config = OctoConfigs.config_25_14_28
+    config = OctoConfigs.config_25_16
     config.absolute_layer_height = .05
     config.target_overlap_cell_ratio = 2
     config.absolute_overlap = 4 * config.line_width

@@ -82,13 +82,13 @@ for i in range(3, base_i+1):
 
     star_builder = OldOctoBuilder()
     star_builder.stellate(i, (0, 0, 0))
-    star_mesh = star_builder.materialize()
+    star_grid = star_builder.materialize()
 
     config = OctoConfigs.config_25
     config.absolute_layers_per_cell = base_layers * p2(base_i-i)
     config.derive()
 
-    RenderUtils.render_grid(star_mesh, config, base_filename=f"i_{i}_star.stl")
+    RenderUtils.render_grid(star_grid, config, base_filename=f"i_{i}_star.stl")
 
 exit()
 

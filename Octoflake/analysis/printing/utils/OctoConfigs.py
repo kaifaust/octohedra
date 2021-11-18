@@ -24,32 +24,30 @@ config_25 = OctoConfig(
         absolute_slit=0.001
         )
 
-config_25.print_settings()
+# config_25.print_settings()
 
-config_25_14_28 = OctoConfig(
-        name="0.25mm nozzle",
+config_25_16 = OctoConfig(
+        name="0.25mm nozzle .32 lines",
         absolute_line_width=.32,
         absolute_layer_height=.16,
-        first_layer_multiplier=1.5,
-        # absolute_layers_per_cell=8,
+        first_layer_multiplier=.5,
+        absolute_layers_per_cell=5,
+        line_overlap=0.99,
         absolute_slit=0.001
         )
 
-line_width = 0.26
-layer_height = 0.13
-# overlap = 3.99 * layer_height
-
-config_25_double_bottom = OctoConfig(
-        name="0.25mm nozzle, double bottom",
-        nozzle=0.25,
-        absolute_line_width=0.26,
-        absolute_layer_height=0.13,
-        first_layer_multiplier=1.5,
-        # absolute_overlap= overlap,
-        solid_layers=1,
+config_25_26 = OctoConfig(
+        name="0.25mm nozzle .26 lines",
+        absolute_line_width=.26,
+        absolute_layer_height=.13,
+        first_layer_multiplier=.5,
         absolute_layers_per_cell=8,
+        line_overlap=0.99,
         absolute_slit=0.001
         )
+
+default = config_25_16
+
 
 config_3 = OctoConfig(
         nozzle=0.3,
@@ -57,7 +55,7 @@ config_3 = OctoConfig(
         line_layer_ratio=2,
         first_layer_multiplier=.5,
         absolute_layers_per_cell=8,
-        absolute_slit=0.001
+        absolute_slit=0.01
         )
 
 config_3_thin = OctoConfig(
@@ -99,15 +97,15 @@ config_8 = OctoConfig(
         absolute_slit=.001
         )
 #
-# config_transparent_8 = PrinterOctoConfigBuilder(
-#     nozzle=0.8,
-#     nozzle_width_multiplier=1.3,  # .35/.25,
-#     line_layer_ratio=2,
-#     first_layer_multiplier=.5,
-#     absolute_layers_per_cell=10,
-#     line_overlap=1,
-#     absolute_slit=.001
-# )
+config_6_transparent = OctoConfig(
+    nozzle=0.8,
+    nozzle_width_multiplier=1.3,  # .35/.25,
+    line_layer_ratio=2,
+    first_layer_multiplier=.5,
+    absolute_layers_per_cell=8,
+    line_overlap=1,
+    absolute_slit=.001
+)
 #
 # config_8_thin = PrinterOctoConfigBuilder(
 #     nozzle=0.8,

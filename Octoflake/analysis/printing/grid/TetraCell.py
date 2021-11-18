@@ -1,29 +1,47 @@
+from dataclasses import dataclass
+from typing import Set
+
 import numpy as np
+import trimesh.transformations
 from euclid3 import Vector3
 from stl import Mesh
 
-from printing.grid.GridCell import GridCell, seal_belt, stitch_belts
-from printing.grid.OctoCell import Trim
+from printing.grid.GridCell import GridCell, belts_to_trimesh, seal_belt, stitch_belts
+from printing.grid.OctoVector import OctoVector
 from printing.utils import OctoConfigs, RenderUtils
-from printing.utils.OctoUtil import E, N, S, W
+from printing.utils.OctoUtil import E, N, NE, NW, S, SE, SW, W, Z
 
-
+@dataclass
 class TetraCell(GridCell):
     """
     This is a tetrahedral cell in the tetra-octa honeycomb
     """
 
-    def __init__(self):
-        super().__init__()
+    trim_ne: bool = False
+    trim_nw: bool = False
+    trim_sw: bool = False
+    trim_se: bool = False
+    flip: bool = False
+
+    def trim(self, center: OctoVector, occ=Set[OctoVector]):
+        flip = 1 if (center.x + center.y + center.z) % 4 == 3 else -1
+        o_wsw = center + -Z * flip + SW + 2 * W
+        o_ssw = (center + -Z * flip + SW + 2 * S)
+        o_ese = (center + Z * flip + SE + 2 * E)
+        o_sse = (center + Z * flip + SE + 2 * S)
+        o_wnw = (center + Z * flip + NW + 2 * W)
+        o_nnw = (center + Z * flip + NW + 2 * N)
+        o_ene = (center + -Z * flip + NE + 2 * E)
+        o_nne = (center + -Z * flip + NE + 2 * N)
+
+        self.trim_sw = o_wsw in occ or o_ssw in occ
+        self.trim_se = o_ese in occ or o_sse in occ
+        self.trim_nw = o_wnw in occ or o_nnw in occ
+        self.trim_ne = o_ene in occ or o_nne in occ
+        self.flip = (center.x + center.y + center.z) % 4 == 1
 
     # TODO: Make a render config that decouples the printer config details from the geometry
-    def render(self, config, center):
-
-        x = center.x
-        y = center.y
-        z = center.z
-
-        spacing = config.cell_size / 4
+    def render(self, config, center=OctoVector()):
         overlap = config.overlap
         tetra_size = config.cell_size / 4 + config.overlap / 2
 
@@ -68,40 +86,49 @@ class TetraCell(GridCell):
         slit = config.slit
         trim = (overlap + slit / 2) / 2
 
-        if Trim.NE in self.trims:
+        if self.trim_ne:
             bottom_belt[0] -= (N + E) * trim / 2
             bottom_belt[3] -= (N + E) * trim / 2
-        if Trim.NW in self.trims:
+        if self.trim_nw:
             top_belt[0] -= (N + W) * trim / 2
             top_belt[1] -= (N + W) * trim / 2
-        if Trim.SW in self.trims:
+        if self.trim_sw:
             bottom_belt[1] -= (S + W) * trim / 2
             bottom_belt[2] -= (S + W) * trim / 2
-        if Trim.SE in self.trims:
+        if self.trim_se:
             top_belt[2] -= (S + E) * trim / 2
             top_belt[3] -= (S + E) * trim / 2
 
-        faces = [seal_belt(top_belt),
-                 stitch_belts(top_belt, top_bottom_belt),
-                 stitch_belts(top_bottom_belt, bottom_top_belt),
-                 stitch_belts(bottom_top_belt, bottom_belt),
-                 seal_belt(bottom_belt, is_bottom=True)
-                 ]
+        belts =np.array([top_belt, top_bottom_belt, bottom_top_belt, bottom_belt])
 
-        face_array = np.concatenate(faces)
+        if self.flip:
+            belts = belts * np.array((1, 1, -1))
+            belts = np.flip(belts, 1)
 
-        if (x + y + z) % 4 == 1:
-            face_array = face_array * np.array((1, 1, -1))
-            face_array = np.flip(face_array, 1)
-
-        mesh = Mesh(np.zeros(face_array.shape[0], dtype=Mesh.dtype))
-        mesh.vectors = face_array
-        mesh.update_normals()
-
-
-        mesh.translate(center.to_np() * spacing)
-
+        mesh = belts_to_trimesh(belts)
         return mesh
+        # mesh.apply_transform(trimesh.transformations.reflection_matrix())
+
+        # faces = [seal_belt(top_belt),
+        #          stitch_belts(top_belt, top_bottom_belt),
+        #          stitch_belts(top_bottom_belt, bottom_top_belt),
+        #          stitch_belts(bottom_top_belt, bottom_belt),
+        #          seal_belt(bottom_belt, is_bottom=True)
+        #          ]
+        #
+        # face_array = np.concatenate(faces)
+        #
+        # if (center.x + center.y + center.z) % 4 == 1:
+        #     face_array = face_array * np.array((1, 1, -1))
+        #     face_array = np.flip(face_array, 1)
+        #
+        # mesh = Mesh(np.zeros(face_array.shape[0], dtype=Mesh.dtype))
+        # mesh.vectors = face_array
+        # mesh.update_normals()
+        #
+        # mesh.translate(center.to_np() * config.cell_size / 4)
+        #
+        # return mesh
 
 
 def single_cell_testing():
@@ -113,7 +140,7 @@ def single_cell_testing():
 
     # octo1 = OctoCell().render()
 
-    RenderUtils.save_meshes(mesh1, mesh2)
+    # RenderUtils.save_meshes(mesh1, mesh2)
 
 
 if __name__ == "__main__":

@@ -1,4 +1,6 @@
 import math
+from dataclasses import dataclass
+from numbers import Real
 
 from printing.utils.OctoUtil import SQRT2, SQRT22
 
@@ -14,6 +16,19 @@ OVERLAP_EPS = 0.0001
 #     def __repr__(self):
 #         return f"OctoConfig(cell_size={self.cell_size:.5f}, overlap={self.overlap:.5f}, " \
 #                f"slit={self.slit:.5f})"
+
+
+# floor_height
+#         overlap = config.overlap
+#         oversize = config.cell_size + overlap
+#         slit = config.slit
+
+# @dataclass
+# class PrintConfig:
+#     cell_size: Real
+#     overlap: Real
+#     slit: Real
+#     floor: Real
 
 
 class OctoConfig:

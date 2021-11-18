@@ -3,12 +3,13 @@ from pathlib import Path
 
 from stl import Mode, Mesh
 import numpy as np
+from trimesh.exchange.export import export_mesh
 
 from printing.utils import OctoConfigs
 
 
 def render_4_8_layers(grid,
-                      config=OctoConfigs.config_25,
+                      config=OctoConfigs.default,
                       filename="derp",
                       base_path=None,
                       z_min=0,  # Set to None to not crop
@@ -18,7 +19,7 @@ def render_4_8_layers(grid,
 
 
 def render_at_pow2_layers(grid,
-                          config=OctoConfigs.config_25,
+                          config=OctoConfigs.default,
                           filename="derp",
                           base_path=None,
                           z_min=0,  # Set to None to not crop
@@ -28,7 +29,7 @@ def render_at_pow2_layers(grid,
 
 
 def render_at_layer_heights(grid, layers,
-                            config=OctoConfigs.config_25,
+                            config=OctoConfigs.default,
                             filename="derp",
                             base_path=None,
                             z_min=0,  # Set to None to not crop
@@ -46,7 +47,7 @@ def render_at_layer_heights(grid, layers,
 
 
 def render_grid(grid,
-                config=OctoConfigs.config_25,
+                config=OctoConfigs.default,
                 base_filename="derp",
                 base_path=None,
                 z_min=0,  # Set to None to not crop
@@ -62,7 +63,7 @@ def render_grid(grid,
     mesh = grid.render(config)
 
 
-    save_meshes(mesh,
+    save_mesh(mesh,
                 base_filename=base_filename,
                 base_path=base_path,
                 mode=mode,
@@ -70,32 +71,41 @@ def render_grid(grid,
                 **filename_details)
 
 
-def save_meshes(*meshes,
+def save_mesh(mesh,
                 base_filename="derp",
                 base_path=None,
                 mode=Mode.BINARY,
                 translation=(0, 0, 0),
                 **filename_details):
-    mesh_data = np.concatenate([mesh.data for mesh in meshes])
-    # rounded = mesh_data.astype(np.float)
+    # mesh_data = np.concatenate([mesh.data for mesh in meshes])
+    # # rounded = mesh_data.astype(np.float)
+    #
 
-
-    mesh = Mesh(mesh_data)
+    # mesh = Mesh(mesh_data)
 
 
 
     # mesh.rotate(np.array([0, 0, 1]), math.radians(45))
-    mesh.translate(translation)
+    # mesh.translate(translation)
 
     base_path = base_path if base_path is not None else Path.home() / "Desktop" / "shapes"
     if not base_path.exists():
         base_path.mkdir()
     filename = base_filename.split(".")[0] + \
                "_" + \
-               "_".join([f"{key}={value:.3}" for key, value in filename_details.items()]) + \
-               ".stl"
+               "_".join([f"{key}={value:g}" for key, value in filename_details.items()]) + \
+               ".obj"
 
     path = base_path / filename
     print(f"Saving mesh as {path}")
-    mesh.save(path, mode=mode)
+    # export_mesh(mesh, filename, include_normals=False)
+
+    filename = str(path)
+    with open(filename, "w") as f:
+        print(export_mesh(mesh, None, file_type="obj", include_normals=False, digits=10),
+              file=f)
+
+    with open(filename, "a") as f:
+        f.write("\n")
+    # mesh.save(path, mode=mode)
     print(f"Done!")
