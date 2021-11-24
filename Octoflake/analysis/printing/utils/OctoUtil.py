@@ -5,6 +5,7 @@ import math
 from printing.grid.OctoVector import OctoVector
 
 
+# TODO: Make this into something like "size", where it doubles up automatically
 def p2(i, o=0):
     return 2 ** (i + o)
 

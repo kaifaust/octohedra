@@ -32,7 +32,7 @@ class FlakeBuilder(OctoBuilder):
 
 
 def testing():
-    grid = FlakeBuilder(3, scale=0).materialize()
+    grid = FlakeBuilder(5, scale=0).materialize()
     # grid = OctoGrid()
     # grid.fill(1, OctoVector())
     # grid.fill(0, OctoVector(2, 0, 0))
@@ -57,7 +57,8 @@ def testing():
 
     # config = OctoConfigs.config_6_transparent
     config = OctoConfigs.config_25_16
-    config.absolute_layers_per_cell = 4
+    config.absolute_layers_per_cell = 8
+    config.slit_absolute = 0
     # config.absolute_overlap = 0
     config.derive()
     config.print_settings()

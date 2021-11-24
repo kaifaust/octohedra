@@ -3,9 +3,14 @@
   <component name="NewModuleRootManager">
     <content url="file://$MODULE_DIR$">
       <excludeFolder url="file://$MODULE_DIR$/venv" />
+      <excludeFolder url="file://$MODULE_DIR$/venv310" />
+      <excludeFolder url="file://$MODULE_DIR$/venv10" />
     </content>
     <orderEntry type="jdk" jdkName="Python 3.8 (analysis)" jdkType="Python SDK" />
     <orderEntry type="sourceFolder" forTests="false" />
     <orderEntry type="library" name="OpenSCAD Libraries" level="application" />
+  </component>
+  <component name="PackageRequirementsSettings">
+    <option name="requirementsPath" value="$MODULE_DIR$/requirements.txt" />
   </component>
 </module>

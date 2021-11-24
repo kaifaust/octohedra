@@ -29,7 +29,7 @@ class OctoBuilder:
         """
         Generate a grid containing this flake alone.
 
-        Call this on the root of your tree of octobuilders
+        Call this on the root of your tree of OctoBuilders
         """
 
         grid = self.materialize_additive()

@@ -1,5 +1,7 @@
+from collections import defaultdict
 from copy import copy
-from dataclasses import astuple
+from dataclasses import astuple, dataclass
+from functools import wraps
 
 import numpy as np
 from euclid3 import *
@@ -14,6 +16,35 @@ from printing.utils import OctoConfigs, RenderUtils
 from printing.utils.OctoConfigs import config_25
 from printing.utils.OctoUtil import NE, NW, SE, SW, X, Y, Z, p2
 
+# def keep_octo(grid, m, center):
+#     to_keep = dict()
+#     for x, y, z in grid:
+#         i, j, k = tuple(Vector3(x, y, z) - center)
+#         yz = abs(j) + abs(k) <= m
+#         zx = abs(k) + abs(i) <= m
+#         if yz and zx:
+#             to_keep[(x, y, z)] = grid[(x, y, z)]
+#
+#     return to_keep
+
+
+DEFAULT_GRID = "default"
+
+
+def dispatch(method):
+    @wraps(method)
+    def wrapper(*args, grids=None, **kwargs):
+        self = args[0]
+        args = args[1:]
+        grids = self.subgrids.keys() if grids is None else grids
+        for grid in self.get_grids():
+            if grid.name in grids:
+                method(self=grid, *args, **kwargs)
+
+    return wrapper
+
+
+
 
 class OctoGrid:
     """
@@ -21,9 +52,20 @@ class OctoGrid:
     this wrapping thing
     """
 
-    def __init__(self):
+    def __init__(self, name="Body"):
+        self.name = name
         self.occ = dict()
+        self.subgrids = dict()
         self.cache = dict()
+
+    def add_subgrid(self, name):
+        self.subgrids[name] = OctoGrid(name)
+
+    def get_subgrid(self, name):
+        return self.subgrids[name]
+
+    def get_grids(self):
+        return {self.name: self} | self.subgrids
 
     def merge(self, other):
         self.occ = {**self.occ, **other.occ}
@@ -33,6 +75,7 @@ class OctoGrid:
         return self.merge(other)
 
     def keep_octo(self, m, center):
+
         to_keep = dict()
         for x, y, z in self.occ:
             i, j, k = tuple(Vector3(x, y, z) - center)
@@ -43,7 +86,7 @@ class OctoGrid:
 
         self.occ = to_keep
 
-    def render(self, config=OctoConfigs.config_25, rotate=True):
+    def render(self, config=OctoConfigs.config_25, rotate=True, grid=DEFAULT_GRID):
         cells = [self.render_cell(cell, center, config) for center, cell in self.occ.items()]
 
         # noinspection PyTypeChecker
@@ -58,13 +101,14 @@ class OctoGrid:
 
     def render_cell(self, cell: GridCell, center: OctoVector, config):
         if astuple(cell) not in self.cache:
-            print("miss")
+
             self.cache[astuple(cell)] = cell.render(config)
 
         mesh = self.cache[astuple(cell)].copy()
 
         return mesh.apply_translation(center.as_np() * (config.cell_size / 4))
 
+    # @dispatch
     def insert_cell(self,
                     center: OctoVector = None,
                     x=0,
@@ -73,10 +117,10 @@ class OctoGrid:
                     strict=True,
                     octo_only=False,
                     tetra_only=False):
-        # print(center)
+
         if center is None:
             center = OctoVector(x, y, z)
-
+        # print("Inserting a cell at:", center)
         if strict:
             center.validate()
 
@@ -255,8 +299,11 @@ class OctoGrid:
 
         return self.four_way(center_of_rotation)
 
+    def __repr__(self):
+        return f"OctoGrid({self.name})({str(list(self.occ.keys()))})"
+
     def __str__(self):
-        return str(self.occ.keys())
+        return "Octogrid " + str(list(self.occ.keys()))
 
 
 def reflection_test():
@@ -271,6 +318,26 @@ def reflection_test():
     print("Yo")
 
 
+def decorator_test():
+    grid = OctoGrid("Body")
+    grid.add_subgrid("Modifier1")
+    grid.add_subgrid("Modifier2")
+
+    print(grid.get_grids())
+    # grid.insert_cell(x=2)
+    # print(grid.get_grids())
+    # grid.insert_cell(y=2, grids="Modifier1")
+    # print(grid.get_grids())
+    # grid.insert_cell(y=-2, grids=("Body", "Modifier2"))
+    # print(grid.get_grids())
+
+    # grid.insert_cell(x=2)
+    #
+    # print(grid.occ)
+    # print()
+
+
 if __name__ == "__main__":
     # tetra_test()
-    reflection_test()
+    # reflection_test()
+    decorator_test()

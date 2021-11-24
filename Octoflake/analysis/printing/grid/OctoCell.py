@@ -207,9 +207,9 @@ def test_basic_render():
 
     cell1 = OctoCell(
             # crops={Crop.BOTTOM},
-            trim_se=True
-            # weld_up=True,
-            # weld_down=True,
+            trim_se=True,
+            weld_up=True,
+            weld_down=True,
             )
 
     # belts_to_trimesh
