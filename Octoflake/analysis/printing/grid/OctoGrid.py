@@ -13,6 +13,7 @@ from printing.grid.OctoCell import OctoCell
 from printing.grid.OctoVector import OctoVector
 from printing.grid.TetraCell import TetraCell
 from printing.utils import OctoConfigs, RenderUtils
+from printing.utils.OctoConfig import RenderConfig
 from printing.utils.OctoConfigs import config_25
 from printing.utils.OctoUtil import NE, NW, SE, SW, X, Y, Z, p2
 
@@ -42,8 +43,6 @@ def dispatch(method):
                 method(self=grid, *args, **kwargs)
 
     return wrapper
-
-
 
 
 class OctoGrid:
@@ -87,26 +86,27 @@ class OctoGrid:
         self.occ = to_keep
 
     def render(self, config=OctoConfigs.config_25, rotate=True, grid=DEFAULT_GRID):
-        cells = [self.render_cell(cell, center, config) for center, cell in self.occ.items()]
+        render_config = config.derive_render_config()
+        cells = [self.render_cell(cell, center, render_config) for center, cell in self.occ.items()]
 
         # noinspection PyTypeChecker
-        cell_mesh = util.concatenate(cells)
+        cell_meshes = util.concatenate(cells)
 
         if rotate:
             angle = math.radians(45)
             rot = transformations.rotation_matrix(angle, (0, 0, 1))
-            cell_mesh.apply_transform(rot)
+            cell_meshes.apply_transform(rot)
 
-        return cell_mesh
+        return cell_meshes.process()
 
-    def render_cell(self, cell: GridCell, center: OctoVector, config):
+    def render_cell(self, cell: GridCell, center: OctoVector, config: RenderConfig):
         if astuple(cell) not in self.cache:
 
             self.cache[astuple(cell)] = cell.render(config)
 
-        mesh = self.cache[astuple(cell)].copy()
+        cell_mesh = self.cache[astuple(cell)].copy()
 
-        return mesh.apply_translation(center.as_np() * (config.cell_size / 4))
+        return cell_mesh.apply_translation(center.as_np() * (config.cell_size / 4))
 
     # @dispatch
     def insert_cell(self,
@@ -139,9 +139,9 @@ class OctoGrid:
                 self.occ[center] = TetraCell()
 
     # TODO: Move this to an OctoBuilders utility file?
-    def fill(self, iteration, center):
+    def fill(self, radius, center, clear=False):
 
-        radius = p2(iteration + 1)
+
         # print("Radius:", radius)
 
         points = [center + OctoVector(x, y, z)
@@ -152,8 +152,10 @@ class OctoGrid:
                   ]
 
         for point in points:
-
-            self.insert_cell(center=point)
+            if not clear:
+                self.insert_cell(center=point)
+            else:
+                self.occ.pop(point)
 
     def crop_bottom(self):
         self.crop(z_min=0)

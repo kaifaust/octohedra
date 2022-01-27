@@ -5,7 +5,7 @@ import numpy as np
 from trimesh import Trimesh
 
 from printing.grid.OctoVector import OctoVector
-from printing.utils.OctoConfig import OctoConfig
+from printing.utils.OctoConfig import OctoConfig, RenderConfig
 
 
 def stitch_belt_to_point(point, belt, is_bottom=False):
@@ -91,5 +91,5 @@ class GridCell:
     def trim(self, center: OctoVector, occ=Set[OctoVector]):
         raise NotImplementedError()
 
-    def render(self, config: OctoConfig, center: OctoVector):
+    def render(self, config: RenderConfig, center: OctoVector):
         raise NotImplementedError()

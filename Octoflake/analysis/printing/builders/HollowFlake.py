@@ -13,13 +13,23 @@ class HollowFlake(OctoBuilder):
 
     def materialize_additive(self):
         grid = OctoGrid()
-        grid.fill(self.iteration, self.thickness_iteration, self.center)
+        radius = p2(self.iteration + 1)
+        grid.fill(radius, self.center)
 
         return grid
 
     def materialize_subtractive(self, grid):
-        t = p2(self.iteration) - 2 * p2(self.thickness_iteration)
-        grid.clear_octo(t, center=self.center)
+        radius = p2(self.iteration) - 2 * p2(self.thickness_iteration)
+        grid.fill(radius, self.center, clear=True)
 
     def __repr__(self):
         return f"HollowFlake({self.iteration}, {self.center}, {self.thickness_iteration})"
+
+
+
+
+if __name__=="__main__":
+
+
+
+    flake = HollowFlake()

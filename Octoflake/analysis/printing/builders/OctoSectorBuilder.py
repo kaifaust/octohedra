@@ -8,7 +8,7 @@ from euclid3 import Vector3
 from printing.builders.OctoBuilder import OctoBuilder
 from printing.grid.OctoGrid import OctoGrid
 from printing.grid.OctoVector import OctoVector
-from printing.utils import RenderUtils
+from printing.utils import OctoConfigs, RenderUtils
 from printing.utils.OctoConfig import OctoConfig
 from printing.utils.OctoUtil import Z, p2
 
@@ -196,7 +196,10 @@ def test_fill_sector():
 
     grid.compute_trimming()
 
-    RenderUtils.render_grid(grid, z_min=0, base_filename="detailed_core.stl")
+    RenderUtils.render_grid(grid,
+                            z_min=0,
+                            filename="detailed_core.stl",
+                            config=OctoConfigs.config_2)
 
 
 # builder.detailed_core_sector_v2(grid, i, Vector3(0,0,0), UNE)
@@ -226,37 +229,40 @@ def test_fill_sector():
 # builder.fill_sector(grid, i, Vector3(0, 0, 0), DNE)
 
 
-
 def multi(i, sectors, name, config):
     builder = OctoSectorBuilder()
     grid = OctoGrid()
     for base_i, orientation in sectors:
         sector_grid = OctoGrid()
         builder.materialize_sector(grid, i, base_i, OctoVector(), orientation)
-        # builder.materialize_sector(sector_grid, i, base_i, OctoVector(), orientation)
+        # builder.materialize_sector(sector_grid, i, base_i, OctoVector(), orientation
         # RenderUtils.render_grid(sector_grid, config, base_filename="sector1", base_i=base_i)
-    RenderUtils.render_grid(grid, config, base_filename=name)
+    RenderUtils.render_grid(grid, config, filename=name)
 
 
 def make_multi_scale():
+    i = 6
+    # config = OctoConfig(
+    #         name="Multiscale config",
+    #         absolute_line_width=.26,
+    #         absolute_layer_height=.13,
+    #         first_layer_multiplier=1.5,
+    #         absolute_layers_per_cell=8,
+    #         line_overlap=0.99,
+    #         absolute_slit=0.001
+    #         )
 
-    i = 4
-    config = OctoConfig(
-            name="Multiscale config",
-            absolute_line_width=.26,
-            absolute_layer_height=.13,
-            first_layer_multiplier=1.5,
-            absolute_layers_per_cell=8,
-            line_overlap=0.99,
-            absolute_slit=0.001
-            )
+    for i, layers in ((6, 8),):
 
-    bs = base_sectors = [(0, UNE), (1, UNW), (2, USW), (3, USE)]
-    # bs = base_sectors = [(0, UNE), (2, USW)]
-    multi(i, base_sectors, "InOrder_CCW", config)
-    # multi(i, [(0, UNE), (3, UNW), (2, USW), (1, USE)], "InOrder_CW", config)
-    # multi(i, [bs[0]], "InOrder_CW", config)
+        config = OctoConfigs.config_25_big
+        config.absolute_layers_per_cell = layers
+        config.print_settings()
 
+        bs = base_sectors = [(0, UNE), (1, UNW), (2, USW), (3, USE)]
+        # bs = base_sectors = [(0, UNE), (2, USW)]
+        multi(i, base_sectors, f"InOrder_CCW_{layers}_{i=}", config)
+        multi(i, [(0, UNE), (3, UNW), (2, USW), (1, USE)], f"InOrder_CW_{layers}_{i=}", config)
+        # multi(i, [bs[0]], "InOrder_CW", config)
 
     exit()
     builder = OctoSectorBuilder()
@@ -270,7 +276,6 @@ def make_multi_scale():
     # builder.materialize_sector(grid1, i, 2, Vector3(0, 0, 0), UNW)
     # builder.materialize_sector(grid1, i, 3, Vector3(0, 0, 0), USE)
 
-
     n = 1
     grid1 = OctoGrid()
     for base_i, orientation in ((0, UNE), (1, UNW), (2, USW), (3, USE)):
@@ -278,7 +283,7 @@ def make_multi_scale():
         builder.materialize_sector(grid1, i, base_i, OctoVector(), orientation)
         # builder.materialize_sector(sector_grid, i, base_i, OctoVector(), orientation)
         # RenderUtils.render_grid(sector_grid, config, base_filename="sector1", base_i=base_i)
-    RenderUtils.render_grid(grid1, config, base_filename="base")
+    RenderUtils.render_grid(grid1, config, filename="base")
 
     grid2 = OctoGrid()
     for base_i, orientation in ((0, UNE), (3, UNW), (2, USW), (1, USE)):
@@ -286,9 +291,7 @@ def make_multi_scale():
         builder.materialize_sector(grid2, i, base_i, OctoVector(), orientation)
         # builder.materialize_sector(sector_grid, i, base_i, OctoVector(), orientation)
         # RenderUtils.render_grid(sector_grid, config,  base_filename="sector2", base_i=base_i)
-    RenderUtils.render_grid(grid2, config, base_filename="mirror1")
-
-
+    RenderUtils.render_grid(grid2, config, filename="mirror1")
 
     # RenderUtils.render_grid(grid3, z_min=0, base_filename="multiscale3.stl")
     # RenderUtils.render_grid(grid4, z_min=0, base_filename="multiscale4.stl")
@@ -302,7 +305,7 @@ def make_multi_scale():
     builder.materialize_sector(grid, i, 3, Vector3(0, 0, 0), USE)
     grid.compute_trimming()
 
-    RenderUtils.render_grid(grid, z_min=0, base_filename="multiscale2.stl")
+    RenderUtils.render_grid(grid, z_min=0, filename="multiscale2.stl")
 
 
 def test_materialize_sector():

@@ -19,7 +19,7 @@ def tune_line_dimensions(dims):
         i = 3
         grid = Tower(i, Z * p2(i)).materialize()
 
-        RenderUtils.render_grid(grid, config, base_filename="tune", layer=height, line=width, mode=Mode.ASCII)
+        RenderUtils.render_grid(grid, config, filename="tune", layer=height, line=width, mode=Mode.ASCII)
 
 
 widths = np.array((0.23, 0.24, 0.25, .26, 0.27))

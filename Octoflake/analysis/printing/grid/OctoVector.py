@@ -63,7 +63,11 @@ class OctoVector:
         return OctoVector(-self.x, -self.y, -self.z)
 
     def __mul__(self, other):
-        if isinstance(other, numbers.Number):
+        if isinstance(other, OctoVector):
+            return OctoVector(self.x * other.x, self.y * other.y, self.z * other.z)
+        elif hasattr(other, '__len__') and len(other) == 3:
+            return OctoVector(self.x * other[0], self.y * other[1], self.z * other[2])
+        elif isinstance(other, numbers.Number):
             return OctoVector(self.x * other, self.y * other, self.z * other)
         # elif isinstance(other, numbers.Number):
         #     raise ValueError("OctoVector coordinates may only be integers.")

@@ -7,7 +7,7 @@ import numpy as np
 from printing.grid.GridCell import GridCell, belts_to_trimesh
 from printing.grid.OctoVector import OctoVector
 from printing.utils import OctoConfigs, RenderUtils
-from printing.utils.OctoConfig import OctoConfig
+from printing.utils.OctoConfig import OctoConfig, RenderConfig
 from printing.utils.OctoUtil import CARDINAL, DOWN, E, N, NE, NW, S, SE, SQRT22, SW, UP, W, X, Y, Z
 
 
@@ -23,6 +23,7 @@ class OctoCell(GridCell):
     crop_west: bool = False
     crop_north: bool = False
     crop_south: bool = False
+
 
     trim_ne: bool = False
     trim_nw: bool = False
@@ -62,7 +63,7 @@ class OctoCell(GridCell):
         self.weld_up = all(attic)
         self.weld_down = all(basement)
 
-    def render(self, config: OctoConfig, center=OctoVector(), sharp = False):
+    def render(self, config: RenderConfig, center=OctoVector(), sharp=False, flower_mode=True):
 
         overlap = config.overlap
         oversize = config.cell_size + overlap
@@ -74,21 +75,26 @@ class OctoCell(GridCell):
         top = oversize / 2 * UP
         bottom = oversize / 2 * DOWN
 
-        # top_belt = overlap / 2.5 * (CARDINAL + DOWN) + top
         top_belt = overlap / 2 * (CARDINAL + DOWN) + top
         if self.clip_point_up:
-            top_belt = overlap/1.5 * (CARDINAL + DOWN) + top
+            # top_belt = (config.layer_height) * (CARDINAL + DOWN) + top
+            top_belt = (overlap / 2 + 1.5 * config.layer_height) * (CARDINAL + DOWN) + top
 
         bottom_belt = overlap / 2 * (CARDINAL + UP) + bottom
 
+        static_equator_belt = CARDINAL * oversize / 2
         equator_belt = CARDINAL * oversize / 2
         equator_upper_belt = equator_belt + trim * (-CARDINAL + UP)
         equator_lower_belt = equator_belt + trim * (-CARDINAL + DOWN)
 
+        pyramid_bottom_belt = equator_belt + config.first_layer_height * DOWN\
+            - config.layer_height *.5  * DOWN
+
         flange = config.floor_height
+        # TODO: Why these factors of sqrt2
         flange_scooch = trim / 2 - flange * SQRT22 / 2
-        upper_flange_belt = equator_belt + flange * SQRT22 * (UP - CARDINAL)
-        lower_flange_belt = equator_belt + flange * SQRT22 * (UP - CARDINAL)
+        upper_flange_belt = equator_belt + flange * (UP -  CARDINAL)
+        lower_flange_belt = equator_belt + flange * (UP -  CARDINAL)
 
         top_welding_upper_belt = top + weld * (CARDINAL + UP)
         top_welding_lower_belt = top + weld * (CARDINAL + DOWN)
@@ -96,84 +102,60 @@ class OctoCell(GridCell):
         down_welding_upper_belt = bottom + weld * (CARDINAL + UP)
         down_welding_lower_belt = bottom + weld * CARDINAL + overlap / 2 * UP
 
-
-        lower_belts = []
-
+        upper_belts = []
         if not self.crop_top:
-            if self.weld_up: # and False: # TODO: Remove
-                upper_belts = [top_welding_upper_belt, top_welding_lower_belt]
+            if self.weld_up:
+                upper_belts.append(top_welding_upper_belt)
+                upper_belts.append(top_welding_lower_belt)
             else:
-                upper_belts = [top_belt]
+                upper_belts.append(top_belt)
             if not sharp:
                 upper_belts.append(equator_upper_belt)
 
+        lower_belts = []
         if not self.crop_bottom:
             if not sharp:
-                lower_belts = [equator_lower_belt]
-            if self.weld_down:# : and False: # TODO: Remove the false
+                lower_belts.append(equator_lower_belt)
+            if self.weld_down:
                 lower_belts.append(down_welding_upper_belt)
                 lower_belts.append(down_welding_lower_belt)
             lower_belts.append(bottom_belt)
+        # else:
+
+            # lower_belts.append(pyramid_bottom_belt)
+
+        # For the old style
+        # lower_belts = []
+        # if not self.crop_bottom:
+        #     if not sharp:
+        #         lower_belts.append(equator_lower_belt)
+        #     if self.weld_down:
+        #         lower_belts.append(down_welding_upper_belt)
+        #         lower_belts.append(down_welding_lower_belt)
+        #     lower_belts.append(bottom_belt)
 
         if self.trim_ne:
-            if not self.crop_bottom or True:
-                equator_belt[0] -= (N + E) * trim / 2
-                equator_belt[1] -= (N + E) * trim / 2
+            equator_belt[0] -= (N + E) * trim / 2
+            equator_belt[1] -= (N + E) * trim / 2
             upper_flange_belt[0] -= (N + E) * flange_scooch
             upper_flange_belt[1] -= (N + E) * flange_scooch
-
         if self.trim_nw:
-            if not self.crop_bottom or True:
-                equator_belt[1] -= (N + W) * trim / 2
-                equator_belt[2] -= (N + W) * trim / 2
+            equator_belt[1] -= (N + W) * trim / 2
+            equator_belt[2] -= (N + W) * trim / 2
             upper_flange_belt[1] -= (N + W) * flange_scooch
             upper_flange_belt[2] -= (N + W) * flange_scooch
         if self.trim_sw:
-            if not self.crop_bottom or True:
-                equator_belt[2] -= (S + W) * trim / 2
-                equator_belt[3] -= (S + W) * trim / 2
+            equator_belt[2] -= (S + W) * trim / 2
+            equator_belt[3] -= (S + W) * trim / 2
             upper_flange_belt[2] -= (S + W) * flange_scooch
             upper_flange_belt[3] -= (S + W) * flange_scooch
-            # TODO: Moving the belts back to upright (Do I care?)
-            lower_flange_belt[2] += (S + W) * flange * SQRT22 / 2
-            lower_flange_belt[3] += (S + W) * flange * SQRT22 / 2
         if self.trim_se:
-            if not self.crop_bottom or True:
-                equator_belt[3] -= (S + E) * trim / 2
-                equator_belt[0] -= (S + E) * trim / 2
+            equator_belt[3] -= (S + E) * trim / 2
+            equator_belt[0] -= (S + E) * trim / 2
             upper_flange_belt[3] -= (S + E) * flange_scooch
             upper_flange_belt[0] -= (S + E) * flange_scooch
 
         belts = np.array(upper_belts + [equator_belt] + lower_belts)
-
-        # if self.trim_ne:
-        #     for belt in belts:
-        #         belt[0] -= (N + E) * trim / 2
-        #         belt[1] -= (N + E) * trim / 2
-        #     upper_flange_belt[0] -= (N + E) * flange_scooch
-        #     upper_flange_belt[1] -= (N + E) * flange_scooch
-        #
-        # if self.trim_nw:
-        #     for belt in belts:
-        #         belt[1] -= (N + W) * trim / 2
-        #         belt[2] -= (N + W) * trim / 2
-        #     upper_flange_belt[1] -= (N + W) * flange_scooch
-        #     upper_flange_belt[2] -= (N + W) * flange_scooch
-        # if self.trim_sw:
-        #     for belt in belts:
-        #         belt[2] -= (S + W) * trim / 2
-        #         belt[3] -= (S + W) * trim / 2
-        #     upper_flange_belt[2] -= (S + W) * flange_scooch
-        #     upper_flange_belt[3] -= (S + W) * flange_scooch
-        #     # TODO: Moving the belts back to upright (Do I care?)
-        #     lower_flange_belt[2] += (S + W) * flange * SQRT22 / 2
-        #     lower_flange_belt[3] += (S + W) * flange * SQRT22 / 2
-        # if self.trim_se:
-        #     for belt in belts:
-        #         belt[3] -= (S + E) * trim / 2
-        #         belt[0] -= (S + E) * trim / 2
-        #     upper_flange_belt[3] -= (S + E) * flange_scooch
-        #     upper_flange_belt[0] -= (S + E) * flange_scooch
 
         for belt in belts:
             if self.crop_east:
@@ -191,7 +173,10 @@ class OctoCell(GridCell):
 
         mesh = belts_to_trimesh(belts)
         if self.crop_bottom and flange > 0:
-            mesh += belts_to_trimesh(np.array([lower_flange_belt, equator_belt]))
+            # mesh += belts_to_trimesh(np.array([lower_flange_belt, pyramid_bottom_belt]))
+            mesh += belts_to_trimesh(np.array([lower_flange_belt, static_equator_belt, pyramid_bottom_belt]))
+            pass
+
 
         return mesh
 
@@ -200,7 +185,7 @@ def test_basic_render():
     config = OctoConfigs.config_25
     config.absolute_layers_per_cell = 8
     config.absolute_overlap = 1
-    config.derive()
+
     config.print_settings()
 
     filename = Path.home() / "Desktop" / "derp.stl"

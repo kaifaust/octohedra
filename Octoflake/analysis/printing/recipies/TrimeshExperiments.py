@@ -4,7 +4,7 @@ import trimesh.primitives
 from printing.builders.TowerBuilders import EvilTower
 from printing.utils import OctoConfigs, RenderUtils
 
-config = OctoConfigs.config_25_16
+config = OctoConfigs.config_25_big
 
 trimesh.primitives.Cylinder()
 
@@ -24,7 +24,7 @@ for i in range(3, 5):
 
             RenderUtils.render_grid(grid,
                                     config,
-                                    base_filename=f"star.stl",
+                                    filename=f"star.stl",
                                     i=i,
                                     overlap=overlap,
                                     layers=layers)

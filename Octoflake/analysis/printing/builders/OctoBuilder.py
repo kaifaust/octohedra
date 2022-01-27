@@ -2,6 +2,7 @@ from dataclasses import dataclass, field
 from functools import reduce
 
 from printing.grid.OctoGrid import OctoGrid
+from printing.utils import OctoConfigs, RenderUtils
 
 
 @dataclass
@@ -18,12 +19,21 @@ class OctoBuilder:
     def __str__(self):
         return str(self.children)
 
-    def add_child(self,child):
+    def add_child(self, child):
         self.children.append(child)
 
     @classmethod
     def builder(cls):
         return OctoBuilder()
+
+    def render(self,
+               config=OctoConfigs.default,
+               filename="Octo",
+               base_path=None,
+               **filename_details):
+        """Generate and save this shape"""
+        grid = self.materialize()
+        RenderUtils.render_grid(grid, config, filename, base_path, **filename_details)
 
     def materialize(self):
         """

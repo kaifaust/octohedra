@@ -34,7 +34,7 @@ module octahedron() {
 module octoflake(i, size, center){
     
     if (i == 0){
-        translate(center) scale(size) octahedron();
+        translate(center) scale(size + .1) octahedron();
     } else {
         octoflake(i-1, size/2, center + 1/2 * size * [0, -1, 0]);
         octoflake(i-1, size/2, center + 1/2 * size * [1, 0, 0]);
@@ -50,4 +50,4 @@ module octoflake(i, size, center){
 
 
 
-octoflake(2, 1, [0,0,0]);
+octoflake(2, 5, [0,0,0]);

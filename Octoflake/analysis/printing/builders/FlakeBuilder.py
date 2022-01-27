@@ -22,8 +22,9 @@ class FlakeBuilder(OctoBuilder):
         if i == 0:
             grid.insert_cell(center=c)
             return
-        elif i == self.scale:
-            grid.fill(self.scale, c)
+        elif i <= self.scale:
+            radius = p2(i + 1)
+            grid.fill(radius, c)
             return
 
         for direction in (E, N, W, S, UP, DOWN):
@@ -32,7 +33,8 @@ class FlakeBuilder(OctoBuilder):
 
 
 def testing():
-    grid = FlakeBuilder(5, scale=0).materialize()
+    grid = FlakeBuilder(1, scale=0).render(OctoConfigs.config_20_thin)
+    exit()
     # grid = OctoGrid()
     # grid.fill(1, OctoVector())
     # grid.fill(0, OctoVector(2, 0, 0))
@@ -56,7 +58,7 @@ def testing():
     # RenderUtils.render_4_8_layers(grid, )
 
     # config = OctoConfigs.config_6_transparent
-    config = OctoConfigs.config_25_16
+    config = OctoConfigs.config_20_thin
     config.absolute_layers_per_cell = 8
     config.slit_absolute = 0
     # config.absolute_overlap = 0

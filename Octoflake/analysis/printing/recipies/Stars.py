@@ -88,7 +88,7 @@ for i in range(3, base_i+1):
     config.absolute_layers_per_cell = base_layers * p2(base_i-i)
     config.derive()
 
-    RenderUtils.render_grid(star_grid, config, base_filename=f"i_{i}_star.stl")
+    RenderUtils.render_grid(star_grid, config, filename=f"i_{i}_star.stl")
 
 exit()
 
@@ -124,6 +124,6 @@ for layers in range(5, 9):
     config.absolute_layers_per_cell = layers
     config.derive()
 
-    RenderUtils.render_grid(tower_mesh, config, base_filename=f"{layers}_temple_complex.stl")
+    RenderUtils.render_grid(tower_mesh, config, filename=f"{layers}_temple_complex.stl")
 
 OctoConfigs.config_25.print_settings()
