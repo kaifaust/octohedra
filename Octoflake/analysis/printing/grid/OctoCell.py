@@ -24,7 +24,6 @@ class OctoCell(GridCell):
     crop_north: bool = False
     crop_south: bool = False
 
-
     trim_ne: bool = False
     trim_nw: bool = False
     trim_sw: bool = False
@@ -76,9 +75,11 @@ class OctoCell(GridCell):
         bottom = oversize / 2 * DOWN
 
         top_belt = overlap / 2 * (CARDINAL + DOWN) + top
+
         if self.clip_point_up:
-            # top_belt = (config.layer_height) * (CARDINAL + DOWN) + top
-            top_belt = (overlap / 2 + 1.5 * config.layer_height) * (CARDINAL + DOWN) + top
+            # top_belt = (3 * config.layer_height) * (CARDINAL + DOWN) + top
+            # top_belt = (overlap / 2 + 1.5 * config.layer_height) * (CARDINAL + DOWN) + top
+            top_belt = (1.5  * config.line_width) * (CARDINAL + DOWN) + top
 
         bottom_belt = overlap / 2 * (CARDINAL + UP) + bottom
 
@@ -87,16 +88,16 @@ class OctoCell(GridCell):
         equator_upper_belt = equator_belt + trim * (-CARDINAL + UP)
         equator_lower_belt = equator_belt + trim * (-CARDINAL + DOWN)
 
-        pyramid_bottom_belt = equator_belt + config.first_layer_height * DOWN\
-            - config.layer_height *.5  * DOWN
+        pyramid_bottom_belt = equator_belt + config.first_layer_height * DOWN \
+                              - config.layer_height * (0.5) * DOWN
 
         flange = config.floor_height
         # TODO: Why these factors of sqrt2
         flange_scooch = trim / 2 - flange * SQRT22 / 2
-        upper_flange_belt = equator_belt + flange * (UP -  CARDINAL)
-        lower_flange_belt = equator_belt + flange * (UP -  CARDINAL)
+        upper_flange_belt = equator_belt + flange * (UP - CARDINAL)
+        lower_flange_belt = equator_belt + flange * (UP - CARDINAL)
 
-        top_welding_upper_belt = top + weld * (CARDINAL + UP)
+        top_welding_upper_belt = top + weld * CARDINAL + 0.01 * UP
         top_welding_lower_belt = top + weld * (CARDINAL + DOWN)
 
         down_welding_upper_belt = bottom + weld * (CARDINAL + UP)
@@ -122,7 +123,7 @@ class OctoCell(GridCell):
             lower_belts.append(bottom_belt)
         # else:
 
-            # lower_belts.append(pyramid_bottom_belt)
+        # lower_belts.append(pyramid_bottom_belt)
 
         # For the old style
         # lower_belts = []
@@ -155,7 +156,9 @@ class OctoCell(GridCell):
             upper_flange_belt[3] -= (S + E) * flange_scooch
             upper_flange_belt[0] -= (S + E) * flange_scooch
 
+
         belts = np.array(upper_belts + [equator_belt] + lower_belts)
+        print(belts)
 
         for belt in belts:
             if self.crop_east:
@@ -174,27 +177,27 @@ class OctoCell(GridCell):
         mesh = belts_to_trimesh(belts)
         if self.crop_bottom and flange > 0:
             # mesh += belts_to_trimesh(np.array([lower_flange_belt, pyramid_bottom_belt]))
-            mesh += belts_to_trimesh(np.array([lower_flange_belt, static_equator_belt, pyramid_bottom_belt]))
+            mesh += belts_to_trimesh(np.array([lower_flange_belt, static_equator_belt,
+                                               pyramid_bottom_belt]))
             pass
-
 
         return mesh
 
 
 def test_basic_render():
     config = OctoConfigs.config_25
-    config.absolute_layers_per_cell = 8
-    config.absolute_overlap = 1
+    config.absolute_layers_per_cell = 3
+    # config.absolute_overlap = 1
 
     config.print_settings()
 
     filename = Path.home() / "Desktop" / "derp.stl"
 
     cell1 = OctoCell(
-            # crops={Crop.BOTTOM},
-            trim_se=True,
+            # crop_bottom=True
+            # trim_se=True,
             weld_up=True,
-            weld_down=True,
+            # weld_down=True,
             )
 
     # belts_to_trimesh

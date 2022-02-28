@@ -241,7 +241,7 @@ def multi(i, sectors, name, config):
 
 
 def make_multi_scale():
-    i = 6
+    i = 4
     # config = OctoConfig(
     #         name="Multiscale config",
     #         absolute_line_width=.26,
@@ -252,9 +252,10 @@ def make_multi_scale():
     #         absolute_slit=0.001
     #         )
 
-    for i, layers in ((6, 8),):
+    # for i, layers in ((4, 3), (4, 4), (4,5), (4,6)):
+    for i, layers in ((5, 8),):
 
-        config = OctoConfigs.config_25_big
+        config = OctoConfigs.config_20_thin
         config.absolute_layers_per_cell = layers
         config.print_settings()
 

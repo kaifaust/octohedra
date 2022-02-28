@@ -33,7 +33,7 @@ class FlakeBuilder(OctoBuilder):
 
 
 def testing():
-    grid = FlakeBuilder(1, scale=0).render(OctoConfigs.config_20_thin)
+    grid = FlakeBuilder(0, scale=0).render(OctoConfigs.config_20_thin_cont)
     exit()
     # grid = OctoGrid()
     # grid.fill(1, OctoVector())
