@@ -253,16 +253,21 @@ def make_multi_scale():
     #         )
 
     # for i, layers in ((4, 3), (4, 4), (4,5), (4,6)):
-    for i, layers in ((5, 8),):
+    # for i, layers in ((4, 8 ),):
+    for i, layers in ((5, 6 ),):
 
-        config = OctoConfigs.config_20_thin
+        # config = OctoConfigs.config_20_quantum_quality_mini_16
+        # config = OctoConfigs.config_20_rainbow_speed
+        # config = OctoConfigs.config_20_rainbow_gem
+        config = OctoConfigs.config_20_rainbow_speed
         config.absolute_layers_per_cell = layers
         config.print_settings()
+        config.print_derived_values()
 
         bs = base_sectors = [(0, UNE), (1, UNW), (2, USW), (3, USE)]
         # bs = base_sectors = [(0, UNE), (2, USW)]
-        multi(i, base_sectors, f"InOrder_CCW_{layers}_{i=}", config)
-        multi(i, [(0, UNE), (3, UNW), (2, USW), (1, USE)], f"InOrder_CW_{layers}_{i=}", config)
+        multi(i, base_sectors, f"InOrder_CCW", config)
+        multi(i, [(0, UNE), (3, UNW), (2, USW), (1, USE)], f"InOrder_CW", config)
         # multi(i, [bs[0]], "InOrder_CW", config)
 
     exit()

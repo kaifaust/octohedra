@@ -1,15 +1,10 @@
 import math
 
-import numpy as np
-from euclid3 import Vector3
-from numpy import arange
-
 from printing.builders.FlakeBuilder import FlakeBuilder
 from printing.builders.OctoBuilder import OctoBuilder
 from printing.grid.OctoVector import OctoVector
 from printing.utils import OctoConfigs
 from printing.utils.OctoUtil import X, Y, Z, p2
-from printing.utils.RenderUtils import render_grid
 
 INF = 100
 
@@ -101,9 +96,8 @@ class EvilTower(OctoBuilder):
         super().__init__()
 
         if elevate_base:
-            self.add_child(FlakeBuilder(base_i-1, center))
-            center = center + Z * (p2(base_i + 1))# - p2(base_i + 1 - contact_patch_i_offset))
-
+            self.add_child(FlakeBuilder(base_i - 1, center))
+            center = center + Z * (p2(base_i + 1))  # - p2(base_i + 1 - contact_patch_i_offset))
 
         c = center
 
@@ -139,6 +133,7 @@ class FlowerTower(OctoBuilder):
             # self.add_child(FlakeBuilder(base_i - 1, center))
             # center = center + Z * (p2(base_i + 1))  # - p2(base_i + 1 - contact_patch_i_offset))
             center = center + Z * (p2(base_i + 1) - p2(base_i + 1 - contact_patch_i_offset))
+        # center = center -  Z
         c = center
         for i in range(base_i, min_i - 1, -1):
             self.add_child(FlakeBuilder(i, c))
@@ -161,92 +156,40 @@ class FlowerTower(OctoBuilder):
                                                False))
 
 
-# def test():
-#     i = 4
-#     # # tower.evil_tower(i, center=(0, 0, p2(i) - p2(i, - 2)), min_evil=3, min_i=2)
-#     grid = FlowerTower(i, min_evil=1).materialize()
-#     # # tower.simple_tower(i, center=(0, 0, p2(i) - p2(i, - 2)))
-#     # grid = OctoGrid()
-#     # tower.materialize(grid)
-#     # grid = EvilTower(5, elevate_base=True, contact_patch_i_offset=1).materialize()
-#     # grid = HollowTower(3, min_iteration=1, elevate_base=True,
-#     # contact_patch_i_offset=1).materialize()
-#     config = OctoConfigs.config_25_15
-#     # config.absolute_layers_per_cell = 8
-#     # config.derive()
-#     grid.compute_trimming()
-#
-#     render_grid(grid, config=config)
-#     config.print_settings()
-
-
 def test():
-    # i = 7
-    # layers = 5
-    # config = OctoConfigs.config_25_big
-    # config = OctoConfigs.config_2_small
-    # config.absolute_layers_per_cell = layers
-    # config.print_settings()
-    # config.print_derived_values()
-    #
-    # # for width in (.24,):
-    # #     config.absolute_line_width = width
-    # # FlowerTower(i).render(config, i=i, layers=layers, filename="flower",
-    # width=config.line_width)
-    # # EvilTower(i, elevate_base=True).render(config, i=i, layers=layers, filename="evil")
-    # Tower(i, elevate_base=True).render(config, i=i, layers=layers, filename="regular")
+
+    def get_target_width(nozzle_diameter, layer_height):
+        nozzle_radius = nozzle_diameter / 2
+        area = math.pi * (nozzle_radius ** 2)
+        h = layer_height
+
+        return area / h + h - math.pi * h / 4
 
     # exit()
     for i in (2,):
-        # for size in (1, 1.25, 1.5, 1.75,  2, 2.5):
-        # for size in (200 / 256, 1, 1.5, 2, 2.5):
-        # for width in (0.16, 0.17, 0.18, 0.19, 0.2, 0.21, 0.22):
+        # for layers in range(2, 15):
+        # for overlap in (0, 0.25, 0.5, 0.75, 1):
+        # for width in (.1, .12, .14, .16, .18, .2):
+        # for width in (.2, 22, .24, .26, .28, .3, 0.32, 0.34, 0.36):
+        # for width in (.1, .12, .14, .16, .18, .2):
+        # config = OctoConfigs.config_20_rainbow_gem
+        config = OctoConfigs.config_20_rainbow_speed
+        # config.absolute_layers_per_cell = layers
+        # config.line_overlap = overlap
+        # config.absolute_line_width = width
+        config.print_settings()
+        config.print_derived_values()
 
-        # for overlap in (0, .5, 0.75, .99):
-            # for height in (0.08, 0.085, 0.09, 0.095, 0.1,):
-         for layers in (10,):
-        # for overlap in np.linspace(.99, .0, 9):
-        #     for size in (1.5, ):
-        #     for size in (1, 1.25, 1.5, 1.75, 2):
+        # Tower(i).render(config,filename="Tower")
 
-                # config = OctoConfigs.config_25
-                config = OctoConfigs.config_20_thin
-
-                # config.target_cell_width = size
-                # config.line_overlap = overlap
-                # config = OctoConfigs.config_2_small
-                # config.absolute_layers_per_cell = 8
-                config.absolute_layers_per_cell = layers
-                # config.target _overlap_cell_ratio = 5
-                # config.absolute_line_width = width
-                # config.absolute_layer_height = height
-                # config.line_overlap = overlap
-
-                # floor = 1.5 * height if 1.5 * height > 0.15 else 1.5 * height
-                # config.absolute_floor_height = floor
-
-                config.print_settings()
-                config.print_derived_values()
-
-                # for width in (.24,):
-                #     config.absolute_line_width = width
-                # FlowerTower(i).render(config, i=i, layers=layers, filename="flowerprocess")
-                FlowerTower(i, elevate_base=True).render(config,
-                                                         # w=config.line_width,
-                                                         # i=i,
-                                                         # h=config.layer_height,
-                                                         # o=overlap,
-                                                         l=layers,
-                                                         # s=size,
-                                                         filename="f")
-                # EvilTower(i, elevate_base=True).render(config,
-                #                                        # w=width,
-                #                                        # o=overlap,
-                #                                        # i=i,
-                #                                        # s=size,
-                #                                        # l=layers,
-                #                                        filename="e")
-                # # # # Tower(i, elevate_base=True).render(config, i=i, layers=layers, filename="regular")
+        FlowerTower(i, elevate_base=True).render(config,
+                                                 # layers=layers,
+                                                 # overlap=overlap,
+                                                 # width=width,
+                                                 filename="Flower")
+        EvilTower(i, elevate_base=True).render(config,
+                                               # overlap=overlap,
+                                               filename="Evil")
 
 
 if __name__ == "__main__":

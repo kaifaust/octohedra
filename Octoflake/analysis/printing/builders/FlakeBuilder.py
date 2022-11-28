@@ -33,7 +33,19 @@ class FlakeBuilder(OctoBuilder):
 
 
 def testing():
-    grid = FlakeBuilder(0, scale=0).render(OctoConfigs.config_20_thin_cont)
+    config = OctoConfigs.config_20_rainbow_speed
+    layers = 16
+    config.absolute_layers_per_cell = layers
+    grid = FlakeBuilder(2, scale=0).render(config,
+                                           filename="flake 2", l=layers)
+    grid = FlakeBuilder(3, scale=0).render(config,
+                                           filename="flake 3", l=layers)
+    grid = FlakeBuilder(4, scale=0).render(config,
+                                           filename="flake 4", l=layers)
+    grid = FlakeBuilder(5, scale=0).render(config,
+                                           filename="flake 5", l=layers)
+    config.print_settings()
+    config.print_derived_values()
     exit()
     # grid = OctoGrid()
     # grid.fill(1, OctoVector())

@@ -1,3 +1,4 @@
+import math
 import numbers
 from dataclasses import astuple, dataclass
 
@@ -25,6 +26,13 @@ class OctoVector:
         for coordinate in self:
             if coordinate != int(coordinate):
                 raise ValueError("OctoVector coordinates may only be integers in strict mode.")
+
+    def distance(self, other):
+        return (self - other).norm()
+        # return math.sqrt(delta.x ** 2 + delta.y ** 2 + delta.z ** 2)
+
+    def norm(self):
+        return math.sqrt(self.x ** 2 + self.y ** 2 + self.z ** 2)
 
     def __repr__(self):
         return f"OctoVector({float(self.x):g}, {float(self.y):g}, {float(self.z):g})"

@@ -165,7 +165,7 @@ class OctoConfig:
         if self.absolute_layers_per_cell is not None:
             return self.absolute_layers_per_cell
         elif self.target_cell_width is not None:
-            print(self.target_cell_width, self.layer_height)
+            # print(self.target_cell_width, self.layer_height)
 
             return math.floor(self.target_cell_width * SQRT22 / self.layer_height)
         else:
@@ -181,22 +181,27 @@ class OctoConfig:
         return 2 * self.layers_per_cell * self.layer_height
 
     def print_derived_values(self):
-        print("\nOther stats")
+        print("Other stats")
         print("\tLayers per cell:", self.layers_per_cell)
         print("\tFirst layer height:", self.first_layer_height)
         print("\tCell Size:", self.cell_size)
         print("\tOverlap:", self.overlap)
         print("\tSize/Overlap:", self.cell_size / self.overlap)
+        print("\tZero overlap line width:", self.overlap /2)
+        print("\tMax overlap line width:", self.overlap * SQRT22)
+        print("")
 
     def print_settings(self):
 
-        print("\nSettings")
+        print("Settings")
         print("\tLine width:", self.line_width)
         print("\tLayer height:", self.layer_height)
         print("\tFirst layer multiplier:", self.first_layer_multiplier)
+        print("\tFirst layer height:", self.absolute_first_layer_height)
         print("\tFloor layers:", self.floor_layers)
         for setting, value in self.settings.items():
             print(f"{setting}: {value}")
+        print("")
 
     def __str__(self):
         return self.name

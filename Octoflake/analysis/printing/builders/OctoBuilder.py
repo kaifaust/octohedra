@@ -8,7 +8,10 @@ from printing.utils import OctoConfigs, RenderUtils
 @dataclass
 class OctoBuilder:
     """Represents a generalized flake-like thing that knows how to materialize itself to an
-    OctoGrid"""
+    OctoGrid
+
+
+    """
 
     children: list = field(default_factory=list, repr=False, init=False)
 
@@ -35,6 +38,15 @@ class OctoBuilder:
         grid = self.materialize()
         RenderUtils.render_grid(grid, config, filename, base_path, **filename_details)
 
+
+    def get_children(self):
+        """
+        Actually write down who your kids are
+
+        """
+        return self.children
+
+
     def materialize(self):
         """
         Generate a grid containing this flake alone.
@@ -57,7 +69,8 @@ class OctoBuilder:
         rectangular and
         octahedral regions. Any functionality beyond that should be in an OctoFlake subclass.
         """
-        if len(self.children) == 0:
+        children = self.get_children()
+        if len(children) == 0:
             return OctoGrid()
         sub_grids = [child.materialize_additive() for child in self.children]
 

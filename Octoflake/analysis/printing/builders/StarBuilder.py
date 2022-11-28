@@ -5,7 +5,7 @@ from printing.builders.OctoBuilder import OctoBuilder
 from printing.grid.OctoVector import OctoVector
 # from printing.grid.Renderer import Renderer
 from printing.utils import OctoConfigs, RenderUtils
-from printing.utils.OctoConfigs import config_25, config_3
+from printing.utils.OctoConfigs import config_25
 from printing.utils.OctoUtil import p2
 
 
@@ -14,14 +14,15 @@ class StarBuilder(OctoBuilder):
     def __init__(self, iteration, center=OctoVector(), length=1, recursive=False):
         super().__init__()
         self.center = center
-        self.add_child(FlakeBuilder(iteration, center, scale=2))
+        self.add_child(FlakeBuilder(iteration, center, scale=0))
         if recursive:
             self.add_child(StarBuilder(iteration - 1, center + OctoVector(0, 0, p2(iteration + 1))))
         else:
             z = p2(iteration + 1)
             i = iteration - 1
             for j in range(length):
-                self.add_child(FlakeBuilder(i, OctoVector(0, 0, z), scale=1-j))
+                # self.add_child(FlakeBuilder(i, OctoVector(0, 0, z), scale=1-j))
+                self.add_child(FlakeBuilder(i, OctoVector(0, 0, z), scale=0))
                 z += p2(i+1)
                 i -= 1
 
@@ -44,7 +45,7 @@ class StarBuilder(OctoBuilder):
 
 
 def testing_recursive():
-    i = 3
+    i = 4
     grid = StarBuilder(i, recursive=True).materialize()
 
     # grid.merge(OctoStar(i-1, OctoVector(0, 0, p2(i+1))).materialize())
@@ -63,13 +64,16 @@ def testing_recursive():
 
 def testing():
     i = 4
-    config = OctoConfigs.config_25_big
+    config = OctoConfigs.config_20_rainbow_quality
+    # config = OctoConfigs.config_20_quantum_quality_mini
+    # config = OctoConfigs.config_20_rainbow_balance
+    # config = OctoConfigs.config_20_rainbow_speed
     # config.absolute_layer_height = .05
     # config.target_overlap_cell_ratio = 2
     # config.absolute_overlap = 4 * config.line_width
     # config.derive()
-    config.absolute_layers_per_cell = 12
-    grid = StarBuilder(i, length=2).render(config)
+    # config.absolute_layers_per_cell = 16
+    grid = StarBuilder(i, length=1).render(config)
     config.print_settings()
     config.print_derived_values()
     exit()

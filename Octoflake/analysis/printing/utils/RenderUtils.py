@@ -38,7 +38,7 @@ def save_mesh(mesh,
         filename += "_" + details
     filename += ".obj"
 
-    print(filename, filename)
+    # print(filename, filename)
 
     path = path / filename
     print(f"Saving mesh as {path}")

@@ -4,6 +4,7 @@ from dataclasses import astuple, dataclass
 from functools import wraps
 
 import numpy as np
+import trimesh
 from euclid3 import *
 from stl import mesh
 from trimesh import transformations, util
@@ -14,7 +15,7 @@ from printing.grid.OctoVector import OctoVector
 from printing.grid.TetraCell import TetraCell
 from printing.utils import OctoConfigs, RenderUtils
 from printing.utils.OctoConfig import RenderConfig
-from printing.utils.OctoConfigs import config_25
+
 from printing.utils.OctoUtil import NE, NW, SE, SW, X, Y, Z, p2
 
 # def keep_octo(grid, m, center):
@@ -85,12 +86,15 @@ class OctoGrid:
 
         self.occ = to_keep
 
-    def render(self, config=OctoConfigs.config_25, rotate=True, grid=DEFAULT_GRID):
+    def render(self, config=OctoConfigs.default, rotate=True, grid=DEFAULT_GRID):
         render_config = config.derive_render_config()
         cells = [self.render_cell(cell, center, render_config) for center, cell in self.occ.items()]
 
-        # noinspection PyTypeChecker
-        cell_meshes = util.concatenate(cells)
+
+        if len(cells) > 0:
+            cell_meshes = util.concatenate(cells)
+        else:
+            cell_meshes = trimesh.Trimesh()
 
         if rotate:
             angle = math.radians(45)
@@ -188,30 +192,30 @@ class OctoGrid:
                 to_remove.add(center)
 
             # tODO: Make this work again
-            # if center.z == z_max:
-            #     cell.crops.add(Crop.TOP)
-            # if center.z > z_max:
-            #     to_remove.add(center)
-            # #
-            # if center.x == x_min:
-            #     cell.crops.add(Crop.WEST)
-            # elif center.x < x_min:
-            #     to_remove.add(center)
+            if center.z == z_max:
+                cell.crop_top = True
+            if center.z > z_max:
+                to_remove.add(center)
+
+            if center.x == x_min:
+                cell.crop_west = True
+            elif center.x < x_min:
+                to_remove.add(center)
             #
-            # if center.x == x_max:
-            #     cell.crops.add(Crop.EAST)
-            # elif center.x > x_max:
-            #     to_remove.add(center)
+            if center.x == x_max:
+                cell.crop_east = True
+            elif center.x > x_max:
+                to_remove.add(center)
             #
-            # if center.y == y_min:
-            #     cell.crops.add(Crop.SOUTH)
-            # elif center.y < y_min:
-            #     to_remove.add(center)
+            if center.y == y_min:
+                cell.crop_south = True
+            elif center.y < y_min:
+                to_remove.add(center)
             #
-            # if center.y == y_max:
-            #     cell.crops.add(Crop.NORTH)
-            # elif center.y > y_max:
-            #     to_remove.add(center)
+            if center.y == y_max:
+                cell.crop_north = True
+            elif center.y > y_max:
+                to_remove.add(center)
 
         for center in to_remove:
             self.occ.pop(center)

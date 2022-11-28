@@ -1,124 +1,273 @@
 import math
-from dataclasses import dataclass
-from typing import List
+from dataclasses import dataclass, field
+from typing import List, TextIO
 
 from euclid3 import Vector2
 
+from printing.gcode.Move import Move
+from printing.gcode.Print import Layer, Print
+from printing.gcode.TempConfig import TempConfig
+from printing.grid.OctoVector import OctoVector
 
-@dataclass
-class PrinterConfig:
-    name: str = "Unnamed Printer Config"
-
-    nozzle_width: float = 0.2
-    line_width: float = 0.25
-    layer_height: float = 0.1
-    first_layer_height: float = 0.15
-
-    ACCEL_G_CODE = "M201"
-    x_max_accel: float = 1500
-    y_max_accel: float = 1500
-    z_max_accel: float = 200
-    e_max_accel: float = 5000
-
-    FEEDRATE_G_CODE = "M203"
-    x_max_feedrate: float = 200
-    y_max_feedrate: float = 200
-    z_max_feedrate: float = 12
-    e_max_feedrate: float = 120
-
-    DEFAULT_ACCEL_G_CODE = "M204"
-    print_accel: float = 800
-    retract_accel: float = 1500
-    travel_accel: float = 1500
-
-    ADV_SETTINGS_G_CODE = "M205"
-    x_max_jerk: float = 8
-    y_max_jerk: float = 8
-    z_max_jerk: float = 0.4
-    e_max_jerk: float = 4.5
-    min_print_feedrate: float = 0
-    min_travel_feedrate: float = 0
-
-    def render(self):
-        lines = []
-        lines.append(";;;;;;;; Printer Configuration ;;;;;;;;\n")
-        lines.append(f"{self.ACCEL_G_CODE} X{self.x_max_accel} Y{self.y_max_accel} "
-                     f"Z{self.z_max_accel} E{self.e_max_accel} "
-                     f"; Set maximum accelerations, (mm/sec^2)")
-
-        lines.append(f"{self.FEEDRATE_G_CODE} X{self.x_max_feedrate} Y{self.y_max_feedrate} "
-                     f"Z{self.z_max_feedrate} E{self.e_max_feedrate} "
-                     f"; Set maximum feedrates, (mm/sec)")
-
-        lines.append(f"{self.DEFAULT_ACCEL_G_CODE} P{self.print_accel} R{self.retract_accel} "
-                     f"T{self.travel_accel} ; Set default accelerations (mm/sec^2)")
-
-        lines.append(f"{self.ADV_SETTINGS_G_CODE} X{self.x_max_jerk} Y{self.y_max_jerk} "
-                     f"Z{self.z_max_jerk} E{self.e_max_jerk} "
-                     f"S{self.min_print_feedrate} T{self.min_travel_feedrate} "                                                                                                                                >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>:::::::]]]]]]]]]
-        return "\n".join(lines)
 
 
 @dataclass
-class PurgeLine:
-    printerConfig: PrinterConfig = PrinterConfig()
+class GCoder:
+    """"""
 
-    nozzle_line_width_multiplier: float = 2
+    # Where is the print head right now
+    location: OctoVector = OctoVector()
 
-    def __post_init__(self):
+    temp: TempConfig = TempConfig()
+
+
+
+    def print(self, print:Print, rapid_iteration=False):
+        """Takes the printer from cold and without filament, to """
+
+
+
         pass
 
-    def render(self):
-        lines = []
-        lines.append(";;;;;;;; Purge Line ;;;;;;;;")
-        lines.append("G1 Y-3.0 F1000.0")
-
-        return "\n".join(lines)
+    def setup(self, rapid_iteration=False):
 
 
-filament_diameter = 1.75
-filament_area = 1 / 2 * math.pi * (filament_diameter / 2) ** 2
 
-layer_height = 0.2
-line_width = 0.3
-
-line_area = layer_height * line_width - math.pi * (layer_height / 2) ** 2
-
-spacing = line_width - layer_height * (1 - math.pi / 4)
-
-flow = line_area / filament_area * 10
-
-@dataclass
-class Gcoder:
-
-    lines : list[str] = fieldy
-
-    def __init__(self):
-        self.printer_config = PrinterConfig()
-
-
-    def purge(self):
+    def print_layer(self, layer:Layer):
         pass
 
+    def move(self, move:Move): # x=None, y=None, z=None, e=None, f=None, comment=None):
+        out = ["G1"]
+        if x is not None:
+            out.append(f"X{x}")
+        if y is not None:
+            out.append(f"Y{y}")
+        if z is not None:
+            out.append(f"Z{z}")
+        if e is not None:
+            out.append(f"E{e}")
+        if f is not None:
+            out.append(f"F{60 * f}")
+        if comment is not None:
+            out.append(f"; {comment}")
+        self.write_line(" ".join(out))
 
-    def move(self, start:Vector2, end:Vector2, width, speed):
-        distance = (end - start).magnitude()
-        e_end = flow_rate * distance + e_start
+        new_x = x if x is not None else self.location.x
+        new_y = y if y is not None else self.location.y
+        new_z = z if z is not None else self.location.z
 
-        return f"G1 X{end.x} Y{end.y} E{e_end}"
+        self.location = OctoVector(new_x, new_y, new_z)
+
+    def retract(self):
+
+    def move_to(self, end: OctoVector, feedrate_mm_s: float = None):
+        if feedrate_mm_s is None:
+            feedrate_mm_s = self.travel_speed
+        self.write_line(f"G1 X{end.x} Y{end.y} Z{end.z} F{60 * feedrate_mm_s}")
+        self.location = end
+
+    def extrude(self, end, feedrate_mm_s: float = None, flow: float = None):
+        if flow is None:
+            flow = flow_rate(self.layer_height, self.line_width)
+        print(self.location, end)
+        to_extrude = flow * end.distance(self.location)
+        if feedrate_mm_s is None:
+            feedrate_mm_s = self.extrusion_speed
+        self.write_line(f"G1 X{end.x} Y{end.y} Z{end.z} E{to_extrude} F{60 * feedrate_mm_s}")
+
+        self.location = end
+
+    # TODO: Add acceleration control
+    # def extrude_relative(self, dx = 0, dy = 0, feedrate_mm_s, ):
+
+    # def
+
+    def extrude_to(self):
+        """Extrude to an absolute location"""
+
+    def filament_move(distance_mm: float, feedrate_mm_s: float = 1, comment=""):  # TODO: comment
+        return f"G1 E{distance_mm} F{60 * feedrate_mm_s}\n"
+
+
+# TODO: Add a module for this
+RAMMING = """G1 E2 F5000
+G1 E2 F5500
+G1 E2 F6000
+G1 E-15.0000 F5800
+G1 E-20.0000 F5500
+G1 E10.0000 F3000
+G1 E-10.0000 F3100
+G1 E10.0000 F3150
+G1 E-10.0000 F3250
+G1 E10.0000 F3300"""
 
 
 
-    def build(self):
-        lines = []
-        lines.append("; Generated by Jeremy's Magical Octoflake Factory")
 
+
+
+
+if __name__=="__main__":
+
+
+    filenames = ["test.gcode", "/volumes/PRUSAI3MK3S/test.gcode"]
+
+    gcoder = GCoder(filenames=filenames)
+
+
+    config.movement_limit_config()
+    config.checks()
+    config.startup()
+    config.purge()
+
+    gcoder.move(x=50, y=50)
+    gcoder.extrude(OctoVector(60, 50, 0))
+    gcoder.extrude(OctoVector(60, 60, 0))
+    gcoder.extrude(OctoVector(50, 60, 0))
+    gcoder.extrude(OctoVector(50, 50, 0))
+
+    config.shutdown()
+
+    exit()
+
+    print("wat")
+
+
+def test_move():
+    lines = []
+
+    lines.append(section_title("Test movements"))
+    lines.append(move(OctoVector(10, 10, 10)))
+    location = OctoVector(10, 10, 10)
+    for _ in range(10):
+
+        next_location = OctoVector(20, 20, 10)
+        lines.append(extrude(location, next_location))
+        location = next_location
+
+        next_location = OctoVector(10, 10, 10)
+        lines.append(extrude(location, next_location))
+        location = next_location
+
+        # lines.append(extrude(OctoVector(20, 20, 10)))
+        # lines.append(extrude(OctoVector(10, 20, 10)))
+        # lines.append(extrude(OctoVector(20, 10, 10)))
+
+    return lines
+
+
+def make_square_spiral(x=100, y=100, n=10):
+    r = 0
+    out = []
+
+    e = 0
+    current = Vector2(x, y)
+    next = Vector2(x, y)
+
+    out.append(move(current))
+    while r < n:
+        # Assume we start at the bottom right
+
+        r += 1
+        next = current + Vector2(0, r)
+        out.append(move(current, next))
+        current = next
+
+        next = current + Vector2(-r, 0)
+        out.append(move(current, next))
+        current = next
+
+        r += 1
+
+        next = current + Vector2(0, - r)
+        out.append(move(current, next))
+        current = next
+
+        next = current + Vector2(r, 0)
+        out.append(move(current, next))
+        current = next
+
+    return "\n".join(out)
+
+
+# @dataclass
+# class PurgeConfig:
+#
+#
+#
+#     def render(self):
+#         lines = []
+#         lines.append(section_title("Purge Line"))
+#         lines.append()
+#
+#
+#         return """
+# ;go outside print area
+# G1 Y-3.0 F1000.0
+# G1 Z0.4 F1000.0
+# ; select extruder
+# Tc ; load filament to nozzle
+#
+# ; purge line
+# G1 X55.0 F2000.0
+# G1 Z0.3 F1000.0
+# G92 E0.0
+# G1 X240.0 E25.0 F1400.0
+# G1 Y-2.0 F1000.0
+# G1 X55.0 E25 F1400.0
+# G1 Z0.20 F1000.0
+# G1 X5.0 E4.0 F1000.0
+#
+# """
+
+
+# @dataclass
+# class PurgeLine:
+#     printerConfig: MovementConfig = MovementConfig()
+#
+#     nozzle_line_width_multiplier: float = 2
+#
+#     def __post_init__(self):
+#         pass
+#
+#     def render(self):
+#         lines = []
+#         lines.append(";;;;;;;; Purge Line ;;;;;;;;")
+#         lines.append("G1 Y-3.0 F1000.0")
+#
+#         return "\n".join(lines)
+
+
+MORE_SETTINGS = """
+;TYPE:Custom
+M862.3 P "MK3SMMU2S" ; printer model check
+M862.1 P0.25 ; nozzle diameter check
+
+G90 ; use absolute coordinates
+M83 ; extruder relative mode
+M104 S210 ; set extruder temp
+M140 S30 ; set bed temp
+Tx
+M190 S30 ; wait for bed temp
+M109 S210 ; wait for extruder temp
+Tc
+
+G28 W ; home all without mesh bed level
+
+
+G21 ; set units to millimeters
+G90 ; use absolute coordinates
+M83 ; use relative distances for extrusion
+
+
+"""
 
 if __name__ == "__main__":
 
+    # config = PrinterConfig()
 
+    # print(config.render())
 
-
-    config = PrinterConfig()
-
-    print(config.render())
+    coder = Gcoder()
+    print(coder.write_file("test.gcode"))
+    print(coder.write_file("/volumes/PRUSAI3MK3S/test.gcode"))

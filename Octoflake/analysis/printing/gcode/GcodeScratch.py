@@ -165,7 +165,7 @@ def move(start:Vector2, end:Vector2, e_start=0, flow_rate = flow):
     distance = (end - start).magnitude()
     e_end = flow_rate * distance + e_start
 
-    ders
+    # ders
 
 
 
@@ -219,7 +219,7 @@ def make_square_spiral(x = 100, y= 100, n=10):
 
 
 def write_file(movements):
-    with open("raw.gcode", "w") as f:
+    with open("out/raw.gcode", "w") as f:
         f.write(PREAMBLE)
         f.write(PURGE)
         f.write(movements)

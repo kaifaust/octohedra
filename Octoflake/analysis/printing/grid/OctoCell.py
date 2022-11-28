@@ -7,7 +7,7 @@ import numpy as np
 from printing.grid.GridCell import GridCell, belts_to_trimesh
 from printing.grid.OctoVector import OctoVector
 from printing.utils import OctoConfigs, RenderUtils
-from printing.utils.OctoConfig import OctoConfig, RenderConfig
+from printing.utils.OctoConfig import RenderConfig
 from printing.utils.OctoUtil import CARDINAL, DOWN, E, N, NE, NW, S, SE, SQRT22, SW, UP, W, X, Y, Z
 
 
@@ -65,6 +65,7 @@ class OctoCell(GridCell):
     def render(self, config: RenderConfig, center=OctoVector(), sharp=False, flower_mode=True):
 
         overlap = config.overlap
+
         oversize = config.cell_size + overlap
         slit = config.slit
 
@@ -79,7 +80,7 @@ class OctoCell(GridCell):
         if self.clip_point_up:
             # top_belt = (3 * config.layer_height) * (CARDINAL + DOWN) + top
             # top_belt = (overlap / 2 + 1.5 * config.layer_height) * (CARDINAL + DOWN) + top
-            top_belt = (1.5  * config.line_width) * (CARDINAL + DOWN) + top
+            top_belt = (1.5 * config.line_width) * (CARDINAL + DOWN) + top
 
         bottom_belt = overlap / 2 * (CARDINAL + UP) + bottom
 
@@ -105,6 +106,7 @@ class OctoCell(GridCell):
 
         upper_belts = []
         if not self.crop_top:
+
             if self.weld_up:
                 upper_belts.append(top_welding_upper_belt)
                 upper_belts.append(top_welding_lower_belt)
@@ -156,9 +158,8 @@ class OctoCell(GridCell):
             upper_flange_belt[3] -= (S + E) * flange_scooch
             upper_flange_belt[0] -= (S + E) * flange_scooch
 
-
         belts = np.array(upper_belts + [equator_belt] + lower_belts)
-        print(belts)
+        # print(belts)
 
         for belt in belts:
             if self.crop_east:
@@ -185,7 +186,7 @@ class OctoCell(GridCell):
 
 
 def test_basic_render():
-    config = OctoConfigs.config_25
+    config = OctoConfigs.default
     config.absolute_layers_per_cell = 3
     # config.absolute_overlap = 1
 
@@ -221,9 +222,3 @@ def testing():
 
 if __name__ == "__main__":
     testing()
-
-    # def __str__(self):
-    #     return f"Octahedron({self.trims})"
-    #
-    # def __repr__(self):
-    #     return self.__str__()
