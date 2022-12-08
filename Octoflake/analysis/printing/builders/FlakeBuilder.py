@@ -18,9 +18,9 @@ class FlakeBuilder(OctoBuilder):
         self.materialize_flake(grid, self.iteration, self.center)
         return grid
 
-    def materialize_flake(self, grid: OctoGrid, i, c):
+    def materialize_flake(self, grid: OctoGrid, i: int, c: OctoVector):
         if i == 0:
-            grid.insert_cell(center=c)
+            grid.insert_cell(c)
             return
         elif i <= self.scale:
             radius = p2(i + 1)

@@ -16,14 +16,15 @@ class StarBuilder(OctoBuilder):
         self.center = center
         self.add_child(FlakeBuilder(iteration, center, scale=0))
         if recursive:
-            self.add_child(StarBuilder(iteration - 1, center + OctoVector(0, 0, p2(iteration + 1))))
+            self.add_child(StarBuilder(iteration - 1,
+                                       center + OctoVector(0, 0, p2(iteration + 1))))
         else:
             z = p2(iteration + 1)
             i = iteration - 1
             for j in range(length):
                 # self.add_child(FlakeBuilder(i, OctoVector(0, 0, z), scale=1-j))
                 self.add_child(FlakeBuilder(i, OctoVector(0, 0, z), scale=0))
-                z += p2(i+1)
+                z += p2(i + 1)
                 i -= 1
 
     # @classmethod
@@ -79,7 +80,6 @@ def testing():
     exit()
     grid.crop_bottom()
     grid.compute_trimming()
-
 
     mesh = Renderer().render(grid, config=config)
     config.print_settings()

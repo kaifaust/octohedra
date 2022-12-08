@@ -5,7 +5,7 @@ from printing.builders.OctoBuilder import OctoBuilder
 from printing.grid.OctoGrid import OctoGrid
 from printing.grid.OctoVector import OctoVector
 from printing.utils import OctoConfigs
-from printing.utils.OctoUtil import X, Z, p2, Y
+from printing.utils.OctoUtil import X, Y, Z, p2
 
 
 @dataclass

@@ -37,7 +37,8 @@ class OctoVector:
     def __repr__(self):
         return f"OctoVector({float(self.x):g}, {float(self.y):g}, {float(self.z):g})"
 
-    __str__ = __repr__
+    def __str__(self):
+        return f"({float(self.x):g}, {float(self.y):g}, {float(self.z):g})"
 
     def __add__(self, other):
         if isinstance(other, OctoVector):

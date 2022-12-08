@@ -1,12 +1,9 @@
-from collections import defaultdict
 from copy import copy
-from dataclasses import astuple, dataclass
+from dataclasses import astuple
 from functools import wraps
 
-import numpy as np
 import trimesh
 from euclid3 import *
-from stl import mesh
 from trimesh import transformations, util
 
 from printing.grid.GridCell import GridCell
@@ -15,20 +12,6 @@ from printing.grid.OctoVector import OctoVector
 from printing.grid.TetraCell import TetraCell
 from printing.utils import OctoConfigs, RenderUtils
 from printing.utils.OctoConfig import RenderConfig
-
-from printing.utils.OctoUtil import NE, NW, SE, SW, X, Y, Z, p2
-
-# def keep_octo(grid, m, center):
-#     to_keep = dict()
-#     for x, y, z in grid:
-#         i, j, k = tuple(Vector3(x, y, z) - center)
-#         yz = abs(j) + abs(k) <= m
-#         zx = abs(k) + abs(i) <= m
-#         if yz and zx:
-#             to_keep[(x, y, z)] = grid[(x, y, z)]
-#
-#     return to_keep
-
 
 DEFAULT_GRID = "default"
 
@@ -90,7 +73,6 @@ class OctoGrid:
         render_config = config.derive_render_config()
         cells = [self.render_cell(cell, center, render_config) for center, cell in self.occ.items()]
 
-
         if len(cells) > 0:
             cell_meshes = util.concatenate(cells)
         else:
@@ -105,7 +87,6 @@ class OctoGrid:
 
     def render_cell(self, cell: GridCell, center: OctoVector, config: RenderConfig):
         if astuple(cell) not in self.cache:
-
             self.cache[astuple(cell)] = cell.render(config)
 
         cell_mesh = self.cache[astuple(cell)].copy()
@@ -118,7 +99,7 @@ class OctoGrid:
                     x=0,
                     y=0,
                     z=0,
-                    strict=True,
+                    strict=False,
                     octo_only=False,
                     tetra_only=False):
 
@@ -127,6 +108,8 @@ class OctoGrid:
         # print("Inserting a cell at:", center)
         if strict:
             center.validate()
+        else:
+            self.occ[center] = OctoCell()
 
         valid_even_z = (center.x % 4 == 2 and center.y % 4 == 0) \
                        or (center.x % 4 == 0 and center.y % 4 == 2)
@@ -137,14 +120,12 @@ class OctoGrid:
         if center.z % 4 == 0 and valid_even_z or center.z % 4 == 2 and valid_odd_z:
             if not tetra_only:
                 self.occ[center] = OctoCell()
-
         elif center.z % 2 == 1 and abs(center.x) % 2 == 1 and abs(center.y) % 2 == 1:
             if not octo_only:
                 self.occ[center] = TetraCell()
 
     # TODO: Move this to an OctoBuilders utility file?
     def fill(self, radius, center, clear=False):
-
 
         # print("Radius:", radius)
 

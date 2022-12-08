@@ -53,7 +53,7 @@ pi = math.pi
 # for height in (np.linspace(.15, .25, 21)):
 for height in (0.1, 0.11, 0.12, 0.13, 0.14, 0.15, 0.16, 0.17, 0.18, 0.19, 0.2):
     # width = get_target_width(nd, height, extrusion_multiplier=1.25, flow_ratio=1.5)
-    width = get_target_width(nd, height, extrusion_multiplier=0.95, flow_ratio=0.9)
+    width = get_target_width(nd, height, extrusion_multiplier=1, flow_ratio=1)
     ratio = width / height
     print(f"{height:.3f}, {width:.4f}, {ratio:.4f}")
 

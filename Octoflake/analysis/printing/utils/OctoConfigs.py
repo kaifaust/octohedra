@@ -1,7 +1,7 @@
 from printing.utils.OctoConfig import OctoConfig
 
-rainbow_gem_line_width = .2
-rainbow_gem_layer_height = .1
+rainbow_gem_line_width = .32
+rainbow_gem_layer_height = .12
 
 config_20_rainbow_gem = OctoConfig(
         name="Rainbow Gem",
@@ -11,7 +11,7 @@ config_20_rainbow_gem = OctoConfig(
         line_overlap=1,
         absolute_first_layer_height=.1999,
         absolute_floor_height=.01,
-        # absolute_layers_per_cell=12,
+        absolute_layers_per_cell=12,
         target_cell_width=2,
         absolute_slit=.001
         )
@@ -29,7 +29,7 @@ config_20_rainbow_speed = OctoConfig(
         line_overlap=1,
         absolute_first_layer_height=0.1999,
         absolute_floor_height=.5 * rainbow_speed_layer_height,
-        target_cell_width=2,
+        target_cell_width=1,
         # absolute_layers_per_cell=10,
         absolute_slit=.01
         )

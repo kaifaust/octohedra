@@ -10,19 +10,34 @@ class OctoBuilder:
     """Represents a generalized flake-like thing that knows how to materialize itself to an
     OctoGrid
 
+    The lifecycle is:
+
+        - init() is called with all your parameters and shit
+        - populate() is called in post_init, which is when you set up your children
+        - You should be done at this point (exception would be negative stuff, but we ain't dealt
+        with that shit yet
+
+
+
 
     """
-
+    # name: ClassVar[str] = "Base Builder"
     children: list = field(default_factory=list, repr=False, init=False)
+
+    def __post_init__(self):
+        self.populate()
 
     def __iadd__(self, other):
         self.add_child(other)
         return self
 
     def __str__(self):
-        return str(self.children)
+        return self.__class__.__name__
+
+        # return str(self.children)
 
     def add_child(self, child):
+
         self.children.append(child)
 
     @classmethod
@@ -38,22 +53,18 @@ class OctoBuilder:
         grid = self.materialize()
         RenderUtils.render_grid(grid, config, filename, base_path, **filename_details)
 
-
-    def get_children(self):
+    def populate(self):
         """
-        Actually write down who your kids are
-
+        Actually write down who your kids are. This is the method you should probably override
         """
-        return self.children
-
+        pass
 
     def materialize(self):
         """
         Generate a grid containing this flake alone.
 
-        Call this on the root of your tree of OctoBuilders
+        Call this on the root of your tree of OctoBuilders. You shouldn't need to override this.
         """
-
         grid = self.materialize_additive()
         self.materialize_subtractive(grid)
         return grid
@@ -69,8 +80,9 @@ class OctoBuilder:
         rectangular and
         octahedral regions. Any functionality beyond that should be in an OctoFlake subclass.
         """
-        children = self.get_children()
-        if len(children) == 0:
+        self.populate()
+
+        if len(self.children) == 0:
             return OctoGrid()
         sub_grids = [child.materialize_additive() for child in self.children]
 

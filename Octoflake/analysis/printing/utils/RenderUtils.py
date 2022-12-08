@@ -16,6 +16,9 @@ def render_grid(grid,
         grid.crop(z_min=z_min)
     grid.compute_trimming()
 
+    if len(grid.occ) < 1:
+        raise Exception("Can't render a grid with no octos!")
+
     print(f"Rendering a grid with {len(grid.occ)} octos, using config: {config}.")
 
     save_mesh(grid.render(config),

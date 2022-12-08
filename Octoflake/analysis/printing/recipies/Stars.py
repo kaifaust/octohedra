@@ -85,7 +85,7 @@ for i in range(3, base_i+1):
     star_grid = star_builder.materialize()
 
     config = OctoConfigs.config_25
-    config.absolute_layers_per_cell = base_layers * p2(base_i-i)
+    config.absolute_layers_per_cell = base_layers * p2(base_i - i)
     config.derive()
 
     RenderUtils.render_grid(star_grid, config, filename=f"i_{i}_star.stl")
@@ -104,10 +104,10 @@ def temple_complex(i, x, y, min_i = 1):
 
     else:
         tower_builder.simple_tower(i, (x, y, 0))
-        temple_complex(i-1, x + p2(i), y + p2(i), min_i=min_i)
-        temple_complex(i-1, x + p2(i), y - p2(i), min_i=min_i)
-        temple_complex(i-1, x - p2(i), y + p2(i), min_i=min_i)
-        temple_complex(i-1, x -  p2(i), y - p2(i), min_i=min_i)
+        temple_complex(i - 1, x + p2(i), y + p2(i), min_i=min_i)
+        temple_complex(i - 1, x + p2(i), y - p2(i), min_i=min_i)
+        temple_complex(i - 1, x - p2(i), y + p2(i), min_i=min_i)
+        temple_complex(i - 1, x - p2(i), y - p2(i), min_i=min_i)
 
 
 temple_complex(i, 0, 0)

@@ -1,6 +1,6 @@
+from printing.builders.OctoBuilder import OctoBuilder
 from printing.grid.OctoGrid import OctoGrid
 from printing.utils.OctoUtil import p2
-from printing.builders.OctoBuilder import OctoBuilder
 
 
 class HollowFlake(OctoBuilder):
@@ -26,10 +26,6 @@ class HollowFlake(OctoBuilder):
         return f"HollowFlake({self.iteration}, {self.center}, {self.thickness_iteration})"
 
 
-
-
-if __name__=="__main__":
-
-
+if __name__ == "__main__":
 
     flake = HollowFlake()

@@ -1,12 +1,16 @@
 import math
+from dataclasses import dataclass
 
 from printing.builders.FlakeBuilder import FlakeBuilder
 from printing.builders.OctoBuilder import OctoBuilder
 from printing.grid.OctoVector import OctoVector
 from printing.utils import OctoConfigs
-from printing.utils.OctoUtil import X, Y, Z, p2
+from printing.utils.OctoUtil import O, X, Y, Z, f_rad, p2
 
 INF = 100
+
+
+# class DisplayBase(Enum):
 
 
 # class Growth(Enum):
@@ -49,7 +53,6 @@ INF = 100
 
 
 class Tower(OctoBuilder):
-
     def __init__(self,
                  base_i: int,
                  center=OctoVector(),
@@ -59,7 +62,8 @@ class Tower(OctoBuilder):
                  ):
         super().__init__()
         if elevate_base:
-            center = center + Z * (p2(base_i + 1) - p2(base_i + 1 - contact_patch_i_offset))
+            center = center + Z * (
+                    p2(base_i + 1) - p2(base_i + 1 - contact_patch_i_offset))
         for i in range(base_i, min_iteration - 1, -1):
             self.add_child(FlakeBuilder(i, center))
             center += Z * p2(i + 1)
@@ -74,7 +78,9 @@ class HollowTower(OctoBuilder):
         super().__init__()
 
         if elevate_base:
-            center = center + Z * (p2(iteration + 1) - p2(iteration + 1 - contact_patch_i_offset))
+            center = center + Z * (
+                    p2(iteration + 1) - p2(iteration + 1 -
+                                           contact_patch_i_offset))
 
         for i in range(iteration, min_iteration - 1, -1):
             self.add_child(FlakeBuilder(i, center, i))
@@ -97,7 +103,8 @@ class EvilTower(OctoBuilder):
 
         if elevate_base:
             self.add_child(FlakeBuilder(base_i - 1, center))
-            center = center + Z * (p2(base_i + 1))  # - p2(base_i + 1 - contact_patch_i_offset))
+            center = center + Z * (
+                p2(base_i + 1))  # - p2(base_i + 1 - contact_patch_i_offset))
 
         c = center
 
@@ -132,7 +139,8 @@ class FlowerTower(OctoBuilder):
         if elevate_base:
             # self.add_child(FlakeBuilder(base_i - 1, center))
             # center = center + Z * (p2(base_i + 1))  # - p2(base_i + 1 - contact_patch_i_offset))
-            center = center + Z * (p2(base_i + 1) - p2(base_i + 1 - contact_patch_i_offset))
+            center = center + Z * (
+                    p2(base_i + 1) - p2(base_i + 1 - contact_patch_i_offset))
         # center = center -  Z
         c = center
         for i in range(base_i, min_i - 1, -1):
@@ -156,6 +164,9 @@ class FlowerTower(OctoBuilder):
                                                False))
 
 
+# class BeautyAndTheBeastTower(OctoBuilder):
+
+
 def test():
 
     def get_target_width(nozzle_diameter, layer_height):
@@ -166,7 +177,7 @@ def test():
         return area / h + h - math.pi * h / 4
 
     # exit()
-    for i in (2,):
+    for i in (5,):
         # for layers in range(2, 15):
         # for overlap in (0, 0.25, 0.5, 0.75, 1):
         # for width in (.1, .12, .14, .16, .18, .2):
@@ -192,5 +203,123 @@ def test():
                                                filename="Evil")
 
 
+@dataclass
+class TowerX(OctoBuilder):
+    name = "TowerX"
+
+    base_i: int = 3  # What iteration of flake to put at the base
+    center: OctoVector = OctoVector()  # Where to put the center of the base flake
+    min_i: int = 1  # How far down to take the recursion
+    display_base: bool = False  # Whether to taper to a waist before expanding out to a base
+
+    def populate(self):
+        self.children.clear()
+        child_center = self.center
+        child_center += self.add_base()
+        for i in range(self.base_i, self.min_i - 1, -1):
+            self.add_child(FlakeBuilder(i, child_center))
+            child_center += Z * f_rad(i)
+
+    def add_base(self, ):
+        if self.display_base:
+            self.add_child(FlakeBuilder(self.base_i - 1, self.center))
+            return Z * f_rad(self.base_i)
+        else:
+            return O
+
+
+@dataclass
+class EvilTowerX(TowerX):
+
+    def populate(self):
+        self.children.clear()
+        child_center = self.center
+        child_center += self.add_base()
+        for i in range(self.base_i, self.min_i - 1, -1):
+
+            e_center = child_center + Z * f_rad(i - 2)
+            e_offset = (f_rad(i) - f_rad(i - 2))
+
+            self.add_child(TowerX(i - 1, e_center + X * e_offset))
+            self.add_child(TowerX(i - 1, e_center - X * e_offset))
+            self.add_child(TowerX(i - 1, e_center + Y * e_offset))
+            self.add_child(TowerX(i - 1, e_center - Y * e_offset))
+
+            self.add_child(FlakeBuilder(i, child_center))
+            child_center += Z * p2(i + 1)
+
+
+@dataclass
+class FlowerTowerX(TowerX):
+
+    def populate(self):
+        self.children.clear()
+
+        center = OctoVector()
+
+        self.add_child(FlakeBuilder(3, center))
+
+        center += Z * f_rad(3)
+        self.add_child(FlakeBuilder(3, center))
+        self.add_child(FlakeBuilder(3, center + Z * f_rad(3)))
+        self.add_child(FlakeBuilder(3, center + Z * f_rad(3) + Y * f_rad(3)))
+        self.add_child(FlakeBuilder(3, center + Z * f_rad(3) - Y * f_rad(3)))
+
+        self.add_child(TowerX(3, center + Z * f_rad(3, 2) + Y * f_rad(3, 2)))
+        self.add_child(TowerX(3, center + Z * f_rad(3, 2) - Y * f_rad(3, 2)))
+
+        center += Z * f_rad(4)
+        self.add_child(FlakeBuilder(3, center))
+        self.add_child(FlakeBuilder(3, center + Z * f_rad(3)))
+        self.add_child(FlakeBuilder(3, center + Z * f_rad(3) + X * f_rad(3)))
+        self.add_child(FlakeBuilder(3, center + Z * f_rad(3) - X * f_rad(3)))
+
+        self.add_child(TowerX(3, center + Z * f_rad(3, 3) + X * f_rad(3, 3)))
+        self.add_child(TowerX(3, center + Z * f_rad(3, 3) - X * f_rad(3, 3)))
+
+        # center += Z * f_rad(4)
+        # self.add_child(FlakeBuilder(3, center))
+        # center += Z * f_rad(4)
+        # self.add_child(FlakeBuilder(3, center))
+
+        center += Z * f_rad(4)
+
+        self.add_child(FlakeBuilder(3, center))
+
+        center += Z * f_rad(3)
+        self.add_child(FlakeBuilder(3, center))
+        center += Z * f_rad(3)
+        self.add_child(FlakeBuilder(3, center))
+
+        self.add_child(TowerX(3, center + Z * f_rad(3) + X * f_rad(3)))
+        self.add_child(TowerX(3, center + Z * f_rad(3) - X * f_rad(3)))
+        self.add_child(TowerX(3, center + Z * f_rad(3) + Y * f_rad(3)))
+        self.add_child(TowerX(3, center + Z * f_rad(3) - Y * f_rad(3)))
+
+        # center += Z * f_rad(4)
+        # self.add_child(FlakeBuilder(3, center))
+        # self.add_child(FlakeBuilder(3, center + Z * f_rad(3) + Y * f_rad(3)))
+        # self.add_child(FlakeBuilder(3, center + Z * f_rad(3) - Y * f_rad(3)))
+
+        #
+        # center += Z * f_rad(3)
+        # self.add_child(FlakeBuilder(4, center))
+        #
+        # center += Z * f_rad(4)
+
+
+def derp():
+    # builder = EvilTowerX(base_i=4, display_base=True)
+    builder = FlowerTowerX(base_i=4, display_base=True)
+    # builder = FlakeBuilder(2, OctoVector(0, 9, 10))
+    # builder = TowerX()
+    # print("Builder is", builder)
+    # print(builder.children)
+    # grid = builder.materialize_additive()
+    # print(grid)
+    builder.render()
+
+
 if __name__ == "__main__":
-    test()
+    derp()
+    # test()

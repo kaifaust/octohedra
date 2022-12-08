@@ -98,7 +98,7 @@ builder = HollowOldOctoBuilder()
 builder.default_thickness = 0
 # builder.stellate(3)
 i = 6
-builder.evil_towerz(i, center=(0, 0, p2(i-2)))
+builder.evil_towerz(i, center=(0, 0, p2(i - 2)))
 
 
 # for c, flake in builder.flakes.items():

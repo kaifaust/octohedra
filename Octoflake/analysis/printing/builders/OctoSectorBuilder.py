@@ -1,5 +1,4 @@
 from dataclasses import dataclass
-from enum import Enum, auto
 from typing import NamedTuple
 
 from bidict import bidict
@@ -10,7 +9,7 @@ from printing.grid.OctoGrid import OctoGrid
 from printing.grid.OctoVector import OctoVector
 from printing.utils import OctoConfigs, RenderUtils
 from printing.utils.OctoConfig import OctoConfig
-from printing.utils.OctoUtil import Z, p2
+from printing.utils.OctoUtil import p2
 
 
 # UNE = (1, 1, 1)
@@ -55,14 +54,14 @@ LEFT_LOOKUP = bidict({
     DNW: DNE,
     DSW: DNW,
     DSE: DSW
-    })
+})
 
 FLIP_LOOKUP = bidict({
     UNE: DNE,
     UNW: DNW,
     USW: DSW,
     USE: DSE,
-    })
+})
 
 
 def flip_z(self):
@@ -242,25 +241,27 @@ def multi(i, sectors, name, config):
 
 def make_multi_scale():
     i = 4
-    # config = OctoConfig(
-    #         name="Multiscale config",
-    #         absolute_line_width=.26,
-    #         absolute_layer_height=.13,
-    #         first_layer_multiplier=1.5,
-    #         absolute_layers_per_cell=8,
-    #         line_overlap=0.99,
-    #         absolute_slit=0.001
-    #         )
+    config = OctoConfig(
+        name="Rainbow Gem",
+        nozzle_width=0.2,
+        absolute_line_width=0.35,
+        absolute_layer_height=-.12,
+        line_overlap=1,
+        absolute_first_layer_height=.1999,
+        absolute_floor_height=.01,
+        # absolute_layers_per_cell=8,
+        target_cell_width=2,
+        absolute_slit=.001
+    )
 
     # for i, layers in ((4, 3), (4, 4), (4,5), (4,6)):
     # for i, layers in ((4, 8 ),):
-    for i, layers in ((5, 6 ),):
-
+    for i, layers in ((3, 6),):
         # config = OctoConfigs.config_20_quantum_quality_mini_16
         # config = OctoConfigs.config_20_rainbow_speed
         # config = OctoConfigs.config_20_rainbow_gem
-        config = OctoConfigs.config_20_rainbow_speed
-        config.absolute_layers_per_cell = layers
+        # config = OctoConfigs.config_20_rainbow_speed
+        # config.absolute_layers_per_cell = layers
         config.print_settings()
         config.print_derived_values()
 
