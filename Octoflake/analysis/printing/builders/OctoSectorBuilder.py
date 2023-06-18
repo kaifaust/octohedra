@@ -135,6 +135,7 @@ class OctoSectorBuilder(OctoBuilder):
 
     def materialize_sector(self, grid, i, base_i, center, orientation):
         if i == base_i:
+
             self.fill_sector(grid, i, center, orientation)
             return
 
@@ -154,17 +155,17 @@ class OctoSectorBuilder(OctoBuilder):
 
         ox, oy, oz = orientation
 
-        iteration += 1
+        # iteration += 1
 
         octo_points = [ox * x + oy * y + oz * z + center
                        for x in range(0, p2(iteration) + 1)
                        for y in range(0, p2(iteration) + 1)
                        for z in range(0, p2(iteration) + 1)
-                       if x + y + z < p2(iteration) + 1
+                       if x + y + z < p2(iteration) + 0
                        ]
 
         for point in octo_points:
-            grid.insert_cell(center=point, octo_only=False)
+            grid.insert_cell(center=point, octo_only=True, strict=False)
 
         # TODO: Keep trying manual infill
         # tetra_points = [ox * x + oy * y + oz * z + center
@@ -186,7 +187,7 @@ class OctoSectorBuilder(OctoBuilder):
 def test_fill_sector():
     grid = OctoGrid()
     builder = OctoSectorBuilder()
-    grid1 = builder.materialize_sector(3, 1, OctoVector(), USE)
+    grid1 = builder.materialize_sector(3, 0, OctoVector(), USE)
 
     # builder.detailed_core_sector(grid, i, Vector3(0, 0, 0), Orientation.UNE)
     # builder.detailed_core_sector(grid, i, Vector3(0, 0, 0), Orientation.UNW)
@@ -201,31 +202,6 @@ def test_fill_sector():
                             config=OctoConfigs.config_2)
 
 
-# builder.detailed_core_sector_v2(grid, i, Vector3(0,0,0), UNE)
-#     builder.detailed_core_sector_v2(grid, i, Vector3(0, 0, 0), UNW)
-#     builder.detailed_core_sector_v2(grid, i, Vector3(0, 0, 0), USE)
-#     builder.detailed_core_sector_v2(grid, i, Vector3(0, 0, 0), USW)
-
-
-# builder.materialize_sector(grid, 4, 0, Vector3(0, 0, 0), USW)
-# builder.materialize_sector(grid, 4, 1, Vector3(0, 0, 0), UNE)
-# builder.materialize_sector(grid, 4, 2, Vector3(0, 0, 0), UNW)
-# builder.materialize_sector(grid, 4, 3, Vector3(0, 0, 0), USE)
-
-
-# builder.materialize_sector(grid, 4, 2, Vector3(0, 0, 0), DSW)
-# builder.materialize_sector(grid, 4, 0, Vector3(0, 0, 0), DNE)
-# builder.materialize_sector(grid, 4, 3, Vector3(0, 0, 0), DNW)
-# builder.materialize_sector(grid, 4, 1, Vector3(0, 0, 0), DSE)
-
-# builder.fill_sector(grid, i, Vector3(0, 0, 0), USW)
-# builder.fill_sector(grid, i, Vector3(0, 0, 0), USE)
-# builder.fill_sector(grid, i, Vector3(0, 0, 0), UNW)
-# builder.fill_sector(grid, i, Vector3(0, 0, 0), UNE)
-# builder.fill_sector(grid, i, Vector3(0, 0, 0), DSW)
-# builder.fill_sector(grid, i, Vector3(0, 0, 0), DSE)
-# builder.fill_sector(grid, i, Vector3(0, 0, 0), DNW)
-# builder.fill_sector(grid, i, Vector3(0, 0, 0), DNE)
 
 
 def multi(i, sectors, name, config):
@@ -236,95 +212,51 @@ def multi(i, sectors, name, config):
         builder.materialize_sector(grid, i, base_i, OctoVector(), orientation)
         # builder.materialize_sector(sector_grid, i, base_i, OctoVector(), orientation
         # RenderUtils.render_grid(sector_grid, config, base_filename="sector1", base_i=base_i)
+    grid.crop_bottom()
+    grid.compute_trimming()
     RenderUtils.render_grid(grid, config, filename=name)
 
 
 def make_multi_scale():
-    i = 4
     config = OctoConfig(
         name="Rainbow Gem",
         nozzle_width=0.2,
-        absolute_line_width=0.35,
-        absolute_layer_height=-.12,
+        absolute_line_width=0.3,
+        absolute_layer_height=0.15,
         line_overlap=1,
-        absolute_first_layer_height=.1999,
+        absolute_first_layer_height= .2249, #.1799,
         absolute_floor_height=.01,
-        # absolute_layers_per_cell=8,
-        target_cell_width=2,
+        absolute_layers_per_cell=16, # prev was 16
         absolute_slit=.001
     )
 
-    # for i, layers in ((4, 3), (4, 4), (4,5), (4,6)):
-    # for i, layers in ((4, 8 ),):
+
     for i, layers in ((3, 6),):
-        # config = OctoConfigs.config_20_quantum_quality_mini_16
-        # config = OctoConfigs.config_20_rainbow_speed
-        # config = OctoConfigs.config_20_rainbow_gem
-        # config = OctoConfigs.config_20_rainbow_speed
-        # config.absolute_layers_per_cell = layers
+        config.absolute_layers_per_cell = layers
         config.print_settings()
         config.print_derived_values()
 
-        bs = base_sectors = [(0, UNE), (1, UNW), (2, USW), (3, USE)]
+        # bs = base_sectors = [(0, UNE), (1, UNW), (2, USW), (3, USE)]
         # bs = base_sectors = [(0, UNE), (2, USW)]
+        bs = base_sectors = [(0, UNE)]
         multi(i, base_sectors, f"InOrder_CCW", config)
-        multi(i, [(0, UNE), (3, UNW), (2, USW), (1, USE)], f"InOrder_CW", config)
-        # multi(i, [bs[0]], "InOrder_CW", config)
+        # multi(i, [(0, UNE), (3, UNW), (2, USW), (1, USE)], f"InOrder_CW", config)
 
     exit()
     builder = OctoSectorBuilder()
 
-    # grid1 = OctoGrid()
-    # # grid2 = OctoGrid()
-    # # grid3 = OctoGrid()
-    # # grid4 = OctoGrid()
-    # builder.materialize_sector(grid1, i, 0, Vector3(0, 0, 0), USW)
-    # builder.materialize_sector(grid1, i, 1, Vector3(0, 0, 0), UNE)
-    # builder.materialize_sector(grid1, i, 2, Vector3(0, 0, 0), UNW)
-    # builder.materialize_sector(grid1, i, 3, Vector3(0, 0, 0), USE)
-
-    n = 1
-    grid1 = OctoGrid()
-    for base_i, orientation in ((0, UNE), (1, UNW), (2, USW), (3, USE)):
-        sector_grid = OctoGrid()
-        builder.materialize_sector(grid1, i, base_i, OctoVector(), orientation)
-        # builder.materialize_sector(sector_grid, i, base_i, OctoVector(), orientation)
-        # RenderUtils.render_grid(sector_grid, config, base_filename="sector1", base_i=base_i)
-    RenderUtils.render_grid(grid1, config, filename="base")
-
-    grid2 = OctoGrid()
-    for base_i, orientation in ((0, UNE), (3, UNW), (2, USW), (1, USE)):
-        sector_grid = OctoGrid()
-        builder.materialize_sector(grid2, i, base_i, OctoVector(), orientation)
-        # builder.materialize_sector(sector_grid, i, base_i, OctoVector(), orientation)
-        # RenderUtils.render_grid(sector_grid, config,  base_filename="sector2", base_i=base_i)
-    RenderUtils.render_grid(grid2, config, filename="mirror1")
-
-    # RenderUtils.render_grid(grid3, z_min=0, base_filename="multiscale3.stl")
-    # RenderUtils.render_grid(grid4, z_min=0, base_filename="multiscale4.stl")
-    exit()
-
-    grid = OctoGrid()
-    builder = OctoSectorBuilder()
-    builder.materialize_sector(grid, i, 1, Vector3(0, 0, 0), USW)
-    builder.materialize_sector(grid, i, 0, Vector3(0, 0, 0), UNE)
-    builder.materialize_sector(grid, i, 2, Vector3(0, 0, 0), UNW)
-    builder.materialize_sector(grid, i, 3, Vector3(0, 0, 0), USE)
-    grid.compute_trimming()
-
-    RenderUtils.render_grid(grid, z_min=0, filename="multiscale2.stl")
 
 
 def test_materialize_sector():
     pass
-    # grid = OctoGrid()
-    # builder = OctoSectorBuilder(4, 2)
-    #
-    # builder.materialize_sector(grid, 4, 3, Vector3(0, 0, 0), UNE)
-    #
-    # RenderUtils.render_grid(grid)
+    grid = OctoGrid()
+    builder = OctoSectorBuilder(4, 2)
+
+    builder.materialize_sector(grid, i=1, base_i=1, center=Vector3(0, 0, 0),orientation= UNE)
+
+    RenderUtils.render_grid(grid)
 
 
 if __name__ == "__main__":
-    make_multi_scale()
-    # test_materialize_sector()
+    # make_multi_scale()
+    test_materialize_sector()

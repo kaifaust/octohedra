@@ -11,6 +11,19 @@ from printing.grid.OctoVector import OctoVector
 def p2(i, o=0):
     return 2 ** (i + o)
 
+def octo_radius(i):
+    """For an octoflake centered on the origin, gives the X (or y or x) corrdinate of the farthest octocell
+
+    octo_radius(1) =
+
+    """
+    if i <0:
+        raise ValueError("Tried to get the radius of a negative iteration.")
+    if i==0:
+        return 0
+    else:
+        return 2 ** i
+
 
 def f_rad(*iterations):
     return sum([2 ** (i + 1) for i in iterations])

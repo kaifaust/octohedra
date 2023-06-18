@@ -80,7 +80,7 @@ class OctoCell(GridCell):
         if self.clip_point_up:
             # top_belt = (3 * config.layer_height) * (CARDINAL + DOWN) + top
             # top_belt = (overlap / 2 + 1.5 * config.layer_height) * (CARDINAL + DOWN) + top
-            top_belt = (1.25 * config.line_width) * (CARDINAL + DOWN) + top
+            top_belt = (1.5 * config.line_width) * (CARDINAL + DOWN) + top
 
         bottom_belt = overlap / 2 * (CARDINAL + UP) + bottom
 

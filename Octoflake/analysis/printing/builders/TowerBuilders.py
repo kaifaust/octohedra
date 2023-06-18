@@ -5,6 +5,7 @@ from printing.builders.FlakeBuilder import FlakeBuilder
 from printing.builders.OctoBuilder import OctoBuilder
 from printing.grid.OctoVector import OctoVector
 from printing.utils import OctoConfigs
+from printing.utils.OctoConfig import OctoConfig
 from printing.utils.OctoUtil import O, X, Y, Z, f_rad, p2
 
 INF = 100
@@ -225,25 +226,31 @@ class TowerX(OctoBuilder):
             self.add_child(FlakeBuilder(self.base_i - 1, self.center))
             return Z * f_rad(self.base_i)
         else:
-            return O
+            return  Z * f_rad(self.base_i-1)
 
 
 @dataclass
 class EvilTowerX(TowerX):
 
+
+    max_subtower_i: int = 100
+    min_subtower_i: int = 1
+
     def populate(self):
         self.children.clear()
         child_center = self.center
-        child_center += self.add_base()
+        # child_center += self.add_base()
         for i in range(self.base_i, self.min_i - 1, -1):
 
             e_center = child_center + Z * f_rad(i - 2)
             e_offset = (f_rad(i) - f_rad(i - 2))
 
-            self.add_child(TowerX(i - 1, e_center + X * e_offset))
-            self.add_child(TowerX(i - 1, e_center - X * e_offset))
-            self.add_child(TowerX(i - 1, e_center + Y * e_offset))
-            self.add_child(TowerX(i - 1, e_center - Y * e_offset))
+            z_offset = -Z * (f_rad(i-2) )
+            if self.min_subtower_i <= i <= self.max_subtower_i:
+                self.add_child(TowerX(i - 1, e_center + X * e_offset + z_offset))
+                self.add_child(TowerX(i - 1, e_center - X * e_offset+ z_offset))
+                self.add_child(TowerX(i - 1, e_center + Y * e_offset+ z_offset))
+                self.add_child(TowerX(i - 1, e_center - Y * e_offset+ z_offset))
 
             self.add_child(FlakeBuilder(i, child_center))
             child_center += Z * p2(i + 1)
@@ -309,15 +316,30 @@ class FlowerTowerX(TowerX):
 
 
 def derp():
+
+    config = OctoConfig(
+        name="Rainbow Mini 0.2",
+        nozzle_width=0.2,
+        absolute_line_width=0.3, # (0.2 + .12) / 1.5
+        absolute_layer_height=0.15,
+        line_overlap=1,
+        absolute_first_layer_height=.199,
+        absolute_floor_height=.01,
+        # absolute_layers_per_cell=4,
+        target_cell_width=4,
+        absolute_slit=.01
+    )
+    config.print_derived_values()
+
     # builder = EvilTowerX(base_i=4, display_base=True)
-    builder = FlowerTowerX(base_i=4, display_base=True)
+    builder = FlowerTower(base_i=4)#, display_base=True)
     # builder = FlakeBuilder(2, OctoVector(0, 9, 10))
     # builder = TowerX()
     # print("Builder is", builder)
     # print(builder.children)
     # grid = builder.materialize_additive()
     # print(grid)
-    builder.render()
+    builder.render(config=config)
 
 
 if __name__ == "__main__":

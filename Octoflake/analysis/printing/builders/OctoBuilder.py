@@ -39,6 +39,7 @@ class OctoBuilder:
     def add_child(self, child):
 
         self.children.append(child)
+        return self
 
     @classmethod
     def builder(cls):

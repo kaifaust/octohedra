@@ -32,6 +32,9 @@ class FlakeBuilder(OctoBuilder):
             self.materialize_flake(grid, i - 1, c + p2(i - 1) * 2 * direction)
 
 
+def generate_test_shapes():
+    pass
+
 def testing():
     config = OctoConfigs.config_20_rainbow_speed
     layers = 16
