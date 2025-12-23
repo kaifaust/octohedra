@@ -59,11 +59,21 @@ export default function Home() {
     });
   }, [generate, loadPreset]);
 
-  // Handle preset selection
+  // Handle preset selection - load and generate immediately
   const handlePresetSelect = useCallback(async (preset: PresetType) => {
     setSelectedPreset(preset);
-    await loadPreset(preset);
-  }, [loadPreset]);
+    const recipe = await fetchPresetRecipe(preset);
+    if (recipe) {
+      setLayers(recipe.layers);
+      setDepthRules(recipe.depth_rules);
+      setIsModified(false);
+      // Generate immediately with the loaded recipe
+      generate({
+        layers: recipe.layers,
+        depth_rules: recipe.depth_rules,
+      });
+    }
+  }, [fetchPresetRecipe, generate]);
 
   // Handle recipe changes (mark as modified)
   const handleLayersChange = useCallback((newLayers: Layer[]) => {
@@ -90,6 +100,13 @@ export default function Home() {
   return (
     <main className="relative w-full h-dvh overflow-hidden">
       <FractalViewer objData={objData} depth={maxDepth} autoRotate={autoRotate} />
+
+      {/* Centered loading spinner */}
+      {isLoading && (
+        <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+          <div className="h-12 w-12 border-4 border-white/30 border-t-white rounded-full animate-spin" />
+        </div>
+      )}
 
       <Card className="absolute top-4 left-4 w-96 max-h-[calc(100dvh-2rem)] overflow-y-auto border-border/50 bg-card/80 backdrop-blur-sm">
         <CardHeader className="pb-2">
