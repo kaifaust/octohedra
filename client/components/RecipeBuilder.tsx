@@ -2,7 +2,7 @@
 
 import { useCallback } from 'react';
 import { Plus, X, ChevronDown, ChevronUp, Copy } from 'lucide-react';
-import { Layer, LayerShape, BranchDirection, GrowFrom, LAYER_SHAPE_OPTIONS, BRANCH_DIRECTION_OPTIONS, GROW_FROM_OPTIONS } from '@/lib/api';
+import { Layer, LayerShape, BranchDirection, LAYER_SHAPE_OPTIONS, BRANCH_DIRECTION_OPTIONS } from '@/lib/api';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
@@ -54,7 +54,6 @@ export function RecipeBuilder({
     const clonedLayer: Layer = {
       depth: layerToClone.depth,
       ...(layerToClone.shape && { shape: layerToClone.shape }),
-      ...(layerToClone.grow_from && { grow_from: layerToClone.grow_from }),
       ...(layerToClone.attach_next_at !== undefined && { attach_next_at: layerToClone.attach_next_at }),
       ...(layerToClone.branch_directions && { branch_directions: [...layerToClone.branch_directions] }),
     };
@@ -159,7 +158,7 @@ export function RecipeBuilder({
                 <Label className="text-xs w-12">Shape</Label>
                 <ToggleGroup
                   type="single"
-                  value={layer.shape || 'full'}
+                  value={layer.shape || 'fractal'}
                   onValueChange={(value) => {
                     if (value) {
                       updateLayer(index, { shape: value as LayerShape });
@@ -181,43 +180,6 @@ export function RecipeBuilder({
                   ))}
                 </ToggleGroup>
               </div>
-
-              {/* Grow from selector (only show for layers after the first) */}
-              {index > 0 && (
-                <div className="flex items-center gap-2">
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <Label className="text-xs w-12 cursor-help">From</Label>
-                    </TooltipTrigger>
-                    <TooltipContent>
-                      <p>Where to build this layer from</p>
-                    </TooltipContent>
-                  </Tooltip>
-                  <ToggleGroup
-                    type="single"
-                    value={layer.grow_from || 'center'}
-                    onValueChange={(value) => {
-                      if (value) {
-                        updateLayer(index, { grow_from: value as GrowFrom });
-                      }
-                    }}
-                    variant="outline"
-                    className="justify-start"
-                  >
-                    {GROW_FROM_OPTIONS.map((opt) => (
-                      <ToggleGroupItem
-                        key={opt.value}
-                        value={opt.value}
-                        size="sm"
-                        className="text-xs px-2 h-6 data-[state=on]:bg-primary data-[state=on]:text-primary-foreground"
-                        title={opt.description}
-                      >
-                        {opt.label}
-                      </ToggleGroupItem>
-                    ))}
-                  </ToggleGroup>
-                </div>
-              )}
 
               {/* Attach point selector (only show if not the last layer) */}
               {index < layers.length - 1 && (

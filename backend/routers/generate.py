@@ -9,11 +9,9 @@ from services.octoflake_service import generate_fractal, generate_stl_from_recip
 router = APIRouter()
 
 # Shape types for layers - how octahedra branch
-# - full: branch in all 6 directions (±x, ±y, ±z) - classic fractal
-# - horizontal: branch only horizontally (±x, ±y)
-# - vertical: branch only vertically (±z)
+# - fractal: branch in all 6 directions (±x, ±y, ±z) - classic fractal
 # - solid: fill solid (no fractal recursion)
-LayerShape = Literal["full", "horizontal", "vertical", "solid"]
+LayerShape = Literal["fractal", "solid"]
 
 # Available preset names (original artist shapes only)
 PresetType = Literal["flake", "tower", "evil_tower", "flower"]
@@ -25,22 +23,12 @@ PresetType = Literal["flake", "tower", "evil_tower", "flower"]
 # - upwards: continue building central stack (+z)
 BranchDirection = Literal["outwards", "inwards", "sideways", "upwards"]
 
-# Grow from options - where this layer builds from
-# - center: build from single center point (default, layers stack vertically)
-# - tips: build from each tip/endpoint of the previous layer's shape
-GrowFrom = Literal["center", "tips"]
-
-
 class Layer(BaseModel):
     """A single layer in the recipe - the fundamental building block."""
     depth: int = Field(default=3, ge=1, le=5, description="Recursion depth (1-5), controls size and complexity")
     shape: Optional[LayerShape] = Field(
         default=None,
-        description="How octahedra branch at each level. Default: 'full'"
-    )
-    grow_from: Optional[GrowFrom] = Field(
-        default=None,
-        description="Where to build from: 'center' (single point) or 'tips' (each endpoint of previous layer). Default: 'center'"
+        description="How octahedra branch at each level. Default: 'fractal'"
     )
     attach_next_at: Optional[int] = Field(
         default=None, ge=1, le=5,
@@ -90,9 +78,7 @@ async def generate(request: GenerateRequest):
     Each layer is a recursive octahedral structure with:
     - `depth`: Size/complexity (1-5). Higher = more detail and larger.
     - `shape`: How octahedra branch at each level:
-      - `full`: All 6 directions (±x, ±y, ±z) - classic fractal
-      - `horizontal`: Only ±x, ±y - creates flat disc layers
-      - `vertical`: Only ±z - creates column structures
+      - `fractal`: All 6 directions (±x, ±y, ±z) - classic fractal
       - `solid`: Fill solid, no recursion
     - `attach_next_at`: Which depth level the next layer attaches to
     - `branch_directions`: Spawn sub-structures in these directions
@@ -110,14 +96,6 @@ async def generate(request: GenerateRequest):
         {"depth": 3},
         {"depth": 2},
         {"depth": 1}
-    ]}
-    ```
-
-    Horizontal layer stacked on full flake:
-    ```json
-    {"layers": [
-        {"depth": 3, "shape": "full"},
-        {"depth": 2, "shape": "horizontal"}
     ]}
     ```
 

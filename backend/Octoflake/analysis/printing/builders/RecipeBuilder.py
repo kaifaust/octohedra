@@ -10,9 +10,7 @@ A recipe is a list of **layers**. Each layer is a recursive octahedral structure
 
 1. **depth** - Recursion depth (1-5), controls size and complexity
 2. **shape** - How octahedra branch at each level:
-   - 'full': All 6 directions (±x, ±y, ±z) - classic fractal (default)
-   - 'horizontal': Only horizontal (±x, ±y) - creates disc layers
-   - 'vertical': Only vertical (±z) - creates column structures
+   - 'fractal': All 6 directions (±x, ±y, ±z) - classic fractal (default)
    - 'solid': Fill solid, no recursion
 3. **attach_next_at** - Which depth level the next layer attaches to (default: top)
 4. **branch_directions** - Spawn sub-structures in these directions
@@ -33,14 +31,6 @@ Tower (depth 4, stacking down to 1):
         {"depth": 1}
     ]
 }
-
-Horizontal layer on top of full flake:
-{
-    "layers": [
-        {"depth": 3, "shape": "full"},
-        {"depth": 2, "shape": "horizontal"}
-    ]
-}
 """
 
 from dataclasses import dataclass, field
@@ -53,7 +43,7 @@ from printing.utils.OctoUtil import DOWN, E, N, S, UP, W, X, Y, Z, p2
 
 
 # Shape types for layers
-ShapeType = Literal["full", "horizontal", "vertical", "solid"]
+ShapeType = Literal["fractal", "solid"]
 
 
 # Pre-defined recipes for common shapes
@@ -164,11 +154,6 @@ class RecipeBuilder(OctoBuilder):
     max_depth: int = 3
     depth_rules: List[Dict] = field(default_factory=list)  # Deprecated
 
-    # Direction sets for different shapes
-    HORIZONTAL = [E, N, W, S]
-    VERTICAL = [UP, DOWN]
-    ALL_DIRS = [E, N, W, S, UP, DOWN]
-
     # Horizontal direction tuples for branching
     ALL_HORIZ_DIRS = {(1, 0), (-1, 0), (0, 1), (0, -1)}
 
@@ -223,108 +208,40 @@ class RecipeBuilder(OctoBuilder):
 
         return result
 
-    def _get_directions_for_shape(self, shape: str) -> list:
-        """Get the branching directions for a shape type."""
-        if shape == "horizontal":
-            return [E, N, W, S]
-        elif shape == "vertical":
-            return [UP, DOWN]
-        else:  # 'full' is the default
-            return [E, N, W, S, UP, DOWN]
-
-    def _get_tip_positions(self, depth: int, shape: str, center: OctoVector) -> List[OctoVector]:
-        """Get the tip positions (outermost cell centers) for a layer.
-
-        For a fractal of given depth and shape, returns the positions of all
-        the outermost octahedra (the "tips" where the next layer could grow from).
-        """
-        if depth <= 0:
-            return [center]
-
-        if shape == "solid":
-            # For solid, tips are at the corners of the bounding octahedron
-            # These are at manhattan distance = radius - 1 from center
-            radius = p2(depth + 1) - 1
-            tips = []
-            # The 6 cardinal tips
-            for direction in [E, N, W, S, UP, DOWN]:
-                tip_pos = center + OctoVector(*(direction * (radius - 1)))
-                tips.append(tip_pos)
-            return tips
-
-        # For fractal shapes, recursively find tips
-        directions = self._get_directions_for_shape(shape)
-
-        # At depth 1, the tips are the cells placed at depth 0
-        if depth == 1:
-            tips = []
-            for direction in directions:
-                tip_pos = center + OctoVector(*(p2(0) * 2 * direction))
-                tips.append(tip_pos)
-            return tips
-
-        # For deeper fractals, recurse to find all tips
-        tips = []
-        for direction in directions:
-            next_center = center + OctoVector(*(p2(depth - 1) * 2 * direction))
-            sub_tips = self._get_tip_positions(depth - 1, shape, next_center)
-            tips.extend(sub_tips)
-
-        return tips
-
     def materialize_additive(self, bonus_iteration=0):
         """Build the complete structure from layers."""
         combined_grid = OctoGrid()
         current_z = 0
         prev_layer = None  # Track previous layer for attach_next_at
-        prev_tips = None  # Track tip positions from previous layer
 
         for layer_idx, layer in enumerate(self.layers):
             layer_depth = layer.get("depth", 3)
-            layer_shape = layer.get("shape", "full")
-            grow_from = layer.get("grow_from", "center")
+            layer_shape = layer.get("shape", "fractal")
             # Branching is enabled if branch_directions is present and non-empty
             layer_branch_dirs = layer.get("branch_directions")
             has_branches = bool(layer_branch_dirs)
 
-            # Determine build centers and layer_z based on grow_from
-            if grow_from == "tips" and prev_tips is not None and len(prev_tips) > 0:
-                # Build from each tip of the previous layer
-                build_centers = prev_tips
-                # For tips mode, layer_z is based on max tip z
-                layer_z = max(tip.z for tip in prev_tips)
-            else:
-                # Calculate z position based on previous layer's attach_next_at
-                if prev_layer is not None:
-                    attach_at = prev_layer.get("attach_next_at")
-                    prev_depth = prev_layer.get("depth", 3)
-                    if attach_at is not None:
-                        # Attach at a specific depth level of the previous layer
-                        prev_layer_center_z = current_z - p2(prev_depth + 1)
-                        layer_z = prev_layer_center_z + p2(attach_at + 1)
-                    else:
-                        layer_z = current_z
+            # Calculate z position based on previous layer's attach_next_at
+            if prev_layer is not None:
+                attach_at = prev_layer.get("attach_next_at")
+                prev_depth = prev_layer.get("depth", 3)
+                if attach_at is not None:
+                    # Attach at a specific depth level of the previous layer
+                    prev_layer_center_z = current_z - p2(prev_depth + 1)
+                    layer_z = prev_layer_center_z + p2(attach_at + 1)
                 else:
                     layer_z = current_z
+            else:
+                layer_z = current_z
 
-                layer_center = self.center + Z * layer_z
-                build_centers = [layer_center]
+            layer_center = self.center + Z * layer_z
 
-            # Build this layer's structure from each build center
+            # Build this layer's structure
             layer_grid = OctoGrid()
-            all_tips = []
-
-            for build_center in build_centers:
-                self._build_layer_recursive(layer_grid, layer_depth, layer_shape, build_center)
-                # Collect tips from this build center
-                tips = self._get_tip_positions(layer_depth, layer_shape, build_center)
-                all_tips.extend(tips)
+            self._build_layer_recursive(layer_grid, layer_depth, layer_shape, layer_center)
 
             # Merge into combined grid
             combined_grid = OctoGrid.merge(combined_grid, layer_grid)
-
-            # Store tips for potential use by next layer
-            prev_tips = all_tips
 
             # Handle branches
             if has_branches:
@@ -386,11 +303,9 @@ class RecipeBuilder(OctoBuilder):
             grid.fill(radius, center)
             return
 
-        # Get directions based on shape
-        directions = self._get_directions_for_shape(shape)
-
-        # Recurse into each direction
-        for direction in directions:
+        # For 'fractal' shape, branch in all 6 cardinal directions
+        # (solid is already handled above)
+        for direction in [E, N, W, S, UP, DOWN]:
             next_center = center + p2(depth - 1) * 2 * direction
             self._build_layer_recursive(grid, depth - 1, shape, next_center)
 
@@ -432,23 +347,13 @@ def test_recipe():
     builder = RecipeBuilder(layers=recipe["layers"])
     builder.render(config=OctoConfigs.config_20_rainbow_speed, filename="Recipe_tower")
 
-    # Test 3: Horizontal layer on full flake
-    print("Testing horizontal layer...")
-    builder = RecipeBuilder(
-        layers=[
-            {"depth": 3, "shape": "full"},
-            {"depth": 2, "shape": "horizontal"},
-        ],
-    )
-    builder.render(config=OctoConfigs.config_20_rainbow_speed, filename="Recipe_horizontal")
-
-    # Test 4: Flower (tower with branches)
+    # Test 3: Flower (tower with branches)
     print("Testing flower...")
     recipe = get_preset_recipe("flower", depth=4, stack_height=2)
     builder = RecipeBuilder(layers=recipe["layers"])
     builder.render(config=OctoConfigs.config_20_rainbow_speed, filename="Recipe_flower")
 
-    # Test 5: Solid layer
+    # Test 4: Solid layer
     print("Testing solid...")
     builder = RecipeBuilder(
         layers=[{"depth": 3, "shape": "solid"}],
