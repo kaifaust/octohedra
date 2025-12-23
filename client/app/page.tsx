@@ -17,6 +17,9 @@ export default function Home() {
   // Track if recipe has been modified from preset
   const [isModified, setIsModified] = useState(false);
 
+  // Camera animation toggle
+  const [autoRotate, setAutoRotate] = useState(false);
+
   const { objData, isLoading, error, generate, fetchPresetRecipe } = useFractalGeneration();
 
   // Set viewport height CSS variable for mobile compatibility
@@ -79,10 +82,23 @@ export default function Home() {
 
   return (
     <main className="relative w-full h-dvh overflow-hidden">
-      <FractalViewer objData={objData} depth={maxDepth} />
+      <FractalViewer objData={objData} depth={maxDepth} autoRotate={autoRotate} />
 
       <div className="absolute top-4 left-4 w-80 max-h-[calc(100dvh-2rem)] overflow-y-auto p-4 bg-gray-900/80 backdrop-blur-sm rounded-lg text-white space-y-4">
-        <h1 className="text-xl font-bold">Octoflake</h1>
+        <div className="flex items-center justify-between">
+          <h1 className="text-xl font-bold">Octoflake</h1>
+          <button
+            onClick={() => setAutoRotate(!autoRotate)}
+            className={`px-2 py-1 text-xs rounded transition-colors ${
+              autoRotate
+                ? 'bg-purple-600 text-white'
+                : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
+            }`}
+            title={autoRotate ? 'Stop animation' : 'Start animation'}
+          >
+            {autoRotate ? '⟳ Animating' : '⟳ Animate'}
+          </button>
+        </div>
 
         {/* Preset selector */}
         <div>
