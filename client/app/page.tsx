@@ -1,11 +1,11 @@
 'use client';
 
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { RotateCw, PanelLeftClose, PanelLeftOpen } from 'lucide-react';
+import { RotateCw, PanelLeftClose, PanelLeftOpen, Download } from 'lucide-react';
 import { FractalViewer } from '@/components/FractalViewer';
 import { RecipeBuilder } from '@/components/RecipeBuilder';
 import { useFractalGeneration } from '@/hooks/useFractalGeneration';
-import { PresetType, Layer, PRESETS } from '@/lib/api';
+import { PresetType, Layer, PRESETS, downloadStl } from '@/lib/api';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
@@ -211,10 +211,31 @@ export default function Home() {
         </Card>
       )}
 
-      {/* File size display */}
+      {/* File size display and download button */}
       {fileSize && (
-        <div className="absolute bottom-4 right-4 text-xs text-white/70 bg-black/30 px-2 py-1 rounded backdrop-blur-sm">
-          {fileSize}
+        <div className="absolute bottom-4 right-4 flex items-center gap-2 text-xs text-white/70 bg-black/30 px-2 py-1 rounded backdrop-blur-sm">
+          <span>{fileSize}</span>
+          {objData && (
+            <button
+              onClick={async () => {
+                try {
+                  const blob = await downloadStl({ layers, six_way: sixWay });
+                  const url = URL.createObjectURL(blob);
+                  const a = document.createElement('a');
+                  a.href = url;
+                  a.download = 'octoflake.stl';
+                  a.click();
+                  URL.revokeObjectURL(url);
+                } catch (e) {
+                  console.error('STL download failed:', e);
+                }
+              }}
+              className="hover:text-white transition-colors"
+              title="Download STL"
+            >
+              <Download className="h-3 w-3" />
+            </button>
+          )}
         </div>
       )}
     </main>

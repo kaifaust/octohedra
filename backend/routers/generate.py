@@ -1,10 +1,10 @@
 from typing import Literal, List, Optional
 
 from fastapi import APIRouter
-from fastapi.responses import PlainTextResponse
+from fastapi.responses import PlainTextResponse, Response
 from pydantic import BaseModel, Field
 
-from services.octoflake_service import generate_fractal, AVAILABLE_PRESETS
+from services.octoflake_service import generate_fractal, generate_stl_from_recipe, AVAILABLE_PRESETS
 
 router = APIRouter()
 
@@ -167,6 +167,49 @@ async def generate(request: GenerateRequest):
         content=obj_content,
         media_type="model/obj",
         headers={"Content-Disposition": "inline; filename=fractal.obj"},
+    )
+
+
+@router.post("/generate/stl")
+async def generate_stl(request: GenerateRequest):
+    """Generate a fractal as binary STL (for 3D printing).
+
+    Same parameters as /generate, but returns binary STL instead of OBJ.
+    """
+    from services.octoflake_service import get_preset_recipe
+
+    # Convert Pydantic models to dicts
+    layers_dicts = [layer.model_dump() for layer in request.layers] if request.layers else None
+    depth_rules_dicts = [rule.model_dump() for rule in request.depth_rules] if request.depth_rules else None
+
+    # Resolve layers from preset if needed
+    six_way = False
+    if layers_dicts is None:
+        if request.preset is not None:
+            recipe_dict = get_preset_recipe(
+                request.preset,
+                depth=request.depth,
+                fill_depth=request.fill_depth,
+                stack_height=request.stack_height
+            )
+            layers_dicts = recipe_dict["layers"]
+            if not depth_rules_dicts:
+                depth_rules_dicts = recipe_dict.get("depth_rules", [])
+            six_way = recipe_dict.get("six_way", False)
+        else:
+            layers_dicts = [{"depth": request.depth, "fill_depth": request.fill_depth}]
+
+    stl_content = generate_stl_from_recipe(
+        layers=layers_dicts,
+        depth_rules=depth_rules_dicts,
+        config_name=request.config,
+        six_way=six_way,
+    )
+
+    return Response(
+        content=stl_content,
+        media_type="model/stl",
+        headers={"Content-Disposition": "attachment; filename=octoflake.stl"},
     )
 
 

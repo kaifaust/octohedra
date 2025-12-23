@@ -17,13 +17,13 @@ CONFIG_MAP = {
 AVAILABLE_PRESETS = list(PRESET_RECIPES.keys())
 
 
-def generate_from_recipe(
+def _build_mesh(
     layers: List[Dict],
     depth_rules: List[Dict] = None,
     config_name: str = "rainbow_speed",
     six_way: bool = False,
-) -> str:
-    """Generate a fractal mesh from a recipe and return as OBJ string.
+):
+    """Build a fractal mesh from a recipe.
 
     Args:
         layers: List of layer configurations, each with depth and fill_depth
@@ -32,7 +32,7 @@ def generate_from_recipe(
         six_way: Whether to apply six-way mirroring (for star shapes)
 
     Returns:
-        OBJ file content as string
+        Trimesh mesh object
     """
     config = CONFIG_MAP.get(config_name, OctoConfigs.config_20_rainbow_speed)
 
@@ -50,7 +50,27 @@ def generate_from_recipe(
     grid.crop(z_min=0)
     grid.compute_trimming()
 
-    mesh = grid.render(config)
+    return grid.render(config)
+
+
+def generate_from_recipe(
+    layers: List[Dict],
+    depth_rules: List[Dict] = None,
+    config_name: str = "rainbow_speed",
+    six_way: bool = False,
+) -> str:
+    """Generate a fractal mesh from a recipe and return as OBJ string.
+
+    Args:
+        layers: List of layer configurations, each with depth and fill_depth
+        depth_rules: List of depth rule overrides
+        config_name: Render config preset
+        six_way: Whether to apply six-way mirroring (for star shapes)
+
+    Returns:
+        OBJ file content as string
+    """
+    mesh = _build_mesh(layers, depth_rules, config_name, six_way)
 
     obj_content = export_mesh(
         mesh,
@@ -60,6 +80,33 @@ def generate_from_recipe(
         digits=6,
     )
     return obj_content
+
+
+def generate_stl_from_recipe(
+    layers: List[Dict],
+    depth_rules: List[Dict] = None,
+    config_name: str = "rainbow_speed",
+    six_way: bool = False,
+) -> bytes:
+    """Generate a fractal mesh from a recipe and return as binary STL.
+
+    Args:
+        layers: List of layer configurations, each with depth and fill_depth
+        depth_rules: List of depth rule overrides
+        config_name: Render config preset
+        six_way: Whether to apply six-way mirroring (for star shapes)
+
+    Returns:
+        Binary STL file content
+    """
+    mesh = _build_mesh(layers, depth_rules, config_name, six_way)
+
+    stl_content = export_mesh(
+        mesh,
+        file_obj=None,
+        file_type="stl",
+    )
+    return stl_content
 
 
 def generate_from_preset(
