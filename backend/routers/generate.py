@@ -14,13 +14,24 @@ NodeType = Literal["flake", "solid", "horizontal", "vertical", "skip"]
 # Available preset names
 PresetType = Literal["flake", "star", "tower", "hollow_tower", "flower", "spire", "solid_core"]
 
+# Branch directions
+BranchDirection = Literal["+x", "-x", "+y", "-y"]
+
 
 class Layer(BaseModel):
     """A single layer in the recipe (a positioned flake)."""
     depth: int = Field(default=3, ge=1, le=5, description="Flake depth for this layer")
     fill_depth: int = Field(default=0, ge=0, le=5, description="Fill depth (0 = fractal, >0 = solid interior)")
     z_offset: Optional[int] = Field(default=None, description="Manual Z offset (auto-calculated if omitted)")
-    branches: bool = Field(default=False, description="Spawn sub-structures in horizontal directions (like FlowerTower)")
+    branches: bool = Field(default=False, description="Spawn sub-structures in horizontal directions")
+    branch_directions: Optional[List[BranchDirection]] = Field(
+        default=None,
+        description="Which directions to branch (default: all 4). Options: +x, -x, +y, -y"
+    )
+    branch_exclude_origin: bool = Field(
+        default=True,
+        description="Each sub-branch excludes direction back to its parent (symmetric orbiting)"
+    )
 
 
 class DepthRule(BaseModel):

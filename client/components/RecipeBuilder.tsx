@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback } from 'react';
-import { Layer, DepthRule, NodeType, NODE_TYPES } from '@/lib/api';
+import { Layer, DepthRule, NodeType, NODE_TYPES, BranchDirection, ALL_BRANCH_DIRECTIONS } from '@/lib/api';
 
 interface RecipeBuilderProps {
   layers: Layer[];
@@ -122,21 +122,87 @@ export function RecipeBuilder({
 
                   {/* Branches toggle - only show if there are more layers below */}
                   {index < layers.length - 1 && (
-                    <div className="flex items-center gap-2">
-                      <label className="text-xs text-gray-400 w-12">Branch:</label>
-                      <button
-                        onClick={() => updateLayer(index, { branches: !layer.branches })}
-                        className={`px-2 py-0.5 text-xs rounded transition-colors ${
-                          layer.branches
-                            ? 'bg-purple-600 text-white'
-                            : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
-                        }`}
-                        title="Spawn sub-structures in horizontal directions (like FlowerTower)"
-                      >
-                        {layer.branches ? 'On' : 'Off'}
-                      </button>
-                      <span className="text-xs text-gray-500">Spawn horizontal sub-towers</span>
-                    </div>
+                    <>
+                      <div className="flex items-center gap-2">
+                        <label className="text-xs text-gray-400 w-12">Branch:</label>
+                        <button
+                          onClick={() => updateLayer(index, { branches: !layer.branches })}
+                          className={`px-2 py-0.5 text-xs rounded transition-colors ${
+                            layer.branches
+                              ? 'bg-purple-600 text-white'
+                              : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
+                          }`}
+                          title="Spawn sub-structures in horizontal directions"
+                        >
+                          {layer.branches ? 'On' : 'Off'}
+                        </button>
+                        <span className="text-xs text-gray-500">Spawn horizontal sub-towers</span>
+                      </div>
+
+                      {/* Branch options - only show when branches enabled */}
+                      {layer.branches && (
+                        <>
+                          {/* Direction toggles */}
+                          <div className="flex items-center gap-2 ml-4">
+                            <label className="text-xs text-gray-400 w-8">Dirs:</label>
+                            <div className="flex gap-1">
+                              {ALL_BRANCH_DIRECTIONS.map((dir) => {
+                                const currentDirs = layer.branch_directions || ALL_BRANCH_DIRECTIONS;
+                                const isActive = currentDirs.includes(dir);
+                                return (
+                                  <button
+                                    key={dir}
+                                    onClick={() => {
+                                      let newDirs: BranchDirection[];
+                                      if (isActive) {
+                                        // Remove direction (but keep at least one)
+                                        newDirs = currentDirs.filter(d => d !== dir);
+                                        if (newDirs.length === 0) newDirs = [dir];
+                                      } else {
+                                        // Add direction
+                                        newDirs = [...currentDirs, dir];
+                                      }
+                                      updateLayer(index, { branch_directions: newDirs });
+                                    }}
+                                    className={`px-1.5 py-0.5 text-xs rounded font-mono transition-colors ${
+                                      isActive
+                                        ? 'bg-green-600 text-white'
+                                        : 'bg-gray-700 text-gray-400 hover:bg-gray-600'
+                                    }`}
+                                    title={`Branch in ${dir} direction`}
+                                  >
+                                    {dir}
+                                  </button>
+                                );
+                              })}
+                            </div>
+                          </div>
+
+                          {/* Exclude origin toggle */}
+                          <div className="flex items-center gap-2 ml-4">
+                            <label className="text-xs text-gray-400 w-8">Orbit:</label>
+                            <button
+                              onClick={() => updateLayer(index, {
+                                branch_exclude_origin: layer.branch_exclude_origin === false
+                              })}
+                              className={`px-2 py-0.5 text-xs rounded transition-colors ${
+                                layer.branch_exclude_origin !== false
+                                  ? 'bg-green-600 text-white'
+                                  : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
+                              }`}
+                              title="Symmetric orbiting: each sub-branch can't branch back toward its parent"
+                            >
+                              {layer.branch_exclude_origin !== false ? 'On' : 'Off'}
+                            </button>
+                            <span className="text-xs text-gray-500">
+                              {layer.branch_exclude_origin !== false
+                                ? 'Symmetric (no back-branching)'
+                                : 'Asymmetric (can overlap)'}
+                            </span>
+                          </div>
+                        </>
+                      )}
+                    </>
                   )}
                 </div>
 

@@ -104,11 +104,11 @@ PRESET_RECIPES = {
     },
     "flower": {
         # Flower: tower with horizontal branches at each layer (matching FlowerTower)
-        # Each layer spawns sub-towers in 4 horizontal directions
+        # All 4 directions, but branch_exclude_origin=True prevents back-branching
         "layers": [
-            {"depth": 4, "fill_depth": 0, "branches": True},
-            {"depth": 3, "fill_depth": 0, "branches": True},
-            {"depth": 2, "fill_depth": 0, "branches": True},
+            {"depth": 4, "fill_depth": 0, "branches": True, "branch_directions": ["+x", "-x", "+y", "-y"], "branch_exclude_origin": True},
+            {"depth": 3, "fill_depth": 0, "branches": True, "branch_directions": ["+x", "-x", "+y", "-y"], "branch_exclude_origin": True},
+            {"depth": 2, "fill_depth": 0, "branches": True, "branch_directions": ["+x", "-x", "+y", "-y"], "branch_exclude_origin": True},
             {"depth": 1, "fill_depth": 0},
         ],
         "depth_rules": [],
@@ -180,12 +180,21 @@ def get_preset_recipe(name: str, depth: int = 3, fill_depth: int = 0, stack_heig
     elif name == "flower":
         # Flower: tower with branches at each layer (except the last)
         # Matches FlowerTower(base_i=depth, min_i=1)
+        # All 4 directions with branch_exclude_origin=True for symmetric orbiting
         layers = []
         min_depth = max(1, depth - stack_height - 1)
         for d in range(depth, min_depth - 1, -1):
             # All layers except the smallest get branches
             has_branches = d > min_depth
-            layers.append({"depth": d, "fill_depth": fill_depth, "branches": has_branches})
+            layer = {
+                "depth": d,
+                "fill_depth": fill_depth,
+                "branches": has_branches,
+            }
+            if has_branches:
+                layer["branch_directions"] = ["+x", "-x", "+y", "-y"]
+                layer["branch_exclude_origin"] = True
+            layers.append(layer)
         return {"layers": layers, "depth_rules": []}
 
     elif name == "spire":
@@ -258,6 +267,22 @@ class RecipeBuilder(OctoBuilder):
         if self.allowed_dirs is None:
             self.allowed_dirs = self.ALL_HORIZ_DIRS.copy()
 
+    # Direction string to tuple mapping
+    DIR_STRING_TO_TUPLE = {
+        "+x": (1, 0),
+        "-x": (-1, 0),
+        "+y": (0, 1),
+        "-y": (0, -1),
+    }
+
+    def _parse_branch_directions(self, directions: List[str]) -> Set[Tuple[int, int]]:
+        """Convert branch direction strings to tuple set."""
+        result = set()
+        for d in directions:
+            if d in self.DIR_STRING_TO_TUPLE:
+                result.add(self.DIR_STRING_TO_TUPLE[d])
+        return result
+
     def _get_rule_for_depth(self, depth: int) -> Dict:
         """Get the depth rule for a given depth, or default to flake behavior."""
         return self._depth_rule_map.get(depth, {"depth": depth, "type": "flake"})
@@ -297,16 +322,34 @@ class RecipeBuilder(OctoBuilder):
             # Merge into combined grid
             combined_grid = OctoGrid.merge(combined_grid, layer_grid)
 
-            # Handle branches (like FlowerTower)
-            if has_branches and self.allowed_dirs:
+            # Handle branches
+            if has_branches:
                 # Get remaining layers for sub-structures
                 remaining_layers = self.layers[layer_idx + 1:]
                 if remaining_layers:
+                    # Get branch directions: intersect layer's directions with allowed_dirs
+                    layer_branch_dirs = layer.get("branch_directions")
+                    if layer_branch_dirs is not None:
+                        # Convert string directions to tuples
+                        layer_dirs = self._parse_branch_directions(layer_branch_dirs)
+                        # Intersect with allowed_dirs (what we're allowed based on where we came from)
+                        if self.allowed_dirs is not None:
+                            current_dirs = layer_dirs & self.allowed_dirs
+                        else:
+                            current_dirs = layer_dirs
+                    elif self.allowed_dirs is not None:
+                        current_dirs = self.allowed_dirs.copy()
+                    else:
+                        current_dirs = self.ALL_HORIZ_DIRS.copy()
+
                     # Spawn sub-structures in allowed horizontal directions
                     branch_offset = p2(layer_depth + 1)
                     branch_z_offset = current_z + p2(layer_depth + 1) - p2(layer_depth)
 
-                    for dx, dy in self.allowed_dirs:
+                    # Get exclude_origin setting (default True for symmetric orbiting)
+                    exclude_origin = layer.get("branch_exclude_origin", True)
+
+                    for dx, dy in current_dirs:
                         # Calculate branch position
                         branch_center = self.center + OctoVector(
                             branch_offset * dx,
@@ -314,9 +357,14 @@ class RecipeBuilder(OctoBuilder):
                             branch_z_offset
                         )
 
-                        # Create sub-recipe without the direction we came from
-                        sub_dirs = self.allowed_dirs.copy()
-                        sub_dirs.discard((-dx, -dy))  # Remove opposite direction
+                        # Determine directions for sub-structure
+                        if exclude_origin:
+                            # Remove direction pointing back to parent (symmetric orbiting)
+                            sub_dirs = current_dirs.copy()
+                            sub_dirs.discard((-dx, -dy))
+                        else:
+                            # Keep all directions (asymmetric, can branch back)
+                            sub_dirs = current_dirs.copy()
 
                         # Build sub-structure with remaining layers
                         sub_builder = RecipeBuilder(
