@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { RotateCw } from 'lucide-react';
+import { RotateCw, PanelLeftClose, PanelLeftOpen } from 'lucide-react';
 import { FractalViewer } from '@/components/FractalViewer';
 import { RecipeBuilder } from '@/components/RecipeBuilder';
 import { useFractalGeneration } from '@/hooks/useFractalGeneration';
@@ -26,6 +26,9 @@ export default function Home() {
 
   // Camera animation toggle
   const [autoRotate, setAutoRotate] = useState(false);
+
+  // Drawer visibility
+  const [drawerOpen, setDrawerOpen] = useState(true);
 
   const { objData, fileSize, isLoading, error, generate, fetchPresetRecipe } = useFractalGeneration();
 
@@ -124,62 +127,89 @@ export default function Home() {
         </div>
       )}
 
-      <Card className="absolute top-4 left-4 w-96 max-h-[calc(100dvh-2rem)] flex flex-col border-border/50 bg-card/80 backdrop-blur-sm pb-0">
-        <CardHeader className="pb-2 shrink-0">
-          <div className="flex items-center justify-between">
-            <CardTitle className="text-xl">Octoflake</CardTitle>
-            <Toggle
-              pressed={autoRotate}
-              onPressedChange={setAutoRotate}
-              size="sm"
-              aria-label="Toggle animation"
-            >
-              <RotateCw className={`h-4 w-4 ${autoRotate ? 'animate-spin' : ''}`} />
-              <span className="ml-1">{autoRotate ? 'Animating' : 'Animate'}</span>
-            </Toggle>
-          </div>
-        </CardHeader>
+      {/* Collapsed drawer toggle button */}
+      {!drawerOpen && (
+        <Button
+          variant="secondary"
+          size="icon"
+          className="absolute top-4 left-4 bg-card/80 backdrop-blur-sm border-border/50"
+          onClick={() => setDrawerOpen(true)}
+          aria-label="Open panel"
+        >
+          <PanelLeftOpen className="h-4 w-4" />
+        </Button>
+      )}
 
-        <CardContent className="overflow-y-auto flex-1 min-h-0 pt-0 pb-4">
-          <div className="space-y-4">
-            {/* Preset selector */}
-            <div className="space-y-2">
-              <Label>Start from Preset</Label>
-              <div className="grid grid-cols-2 gap-1">
-                {PRESETS.map((preset) => (
-                  <Button
-                    key={preset.value}
-                    variant={selectedPreset === preset.value && !isModified ? 'default' : 'secondary'}
-                    size="sm"
-                    onClick={() => handlePresetSelect(preset.value)}
-                    className="w-full text-xs"
-                  >
-                    {preset.label}
-                  </Button>
-                ))}
+      {/* Drawer panel */}
+      {drawerOpen && (
+        <Card className="absolute top-4 left-4 w-96 max-h-[calc(100dvh-2rem)] flex flex-col border-border/50 bg-card/80 backdrop-blur-sm pb-0">
+          <CardHeader className="pb-2 shrink-0">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="ghost"
+                  size="icon-sm"
+                  onClick={() => setDrawerOpen(false)}
+                  aria-label="Close panel"
+                  className="h-6 w-6 text-muted-foreground hover:text-foreground"
+                >
+                  <PanelLeftClose className="h-4 w-4" />
+                </Button>
+                <CardTitle className="text-xl">Octoflake</CardTitle>
               </div>
-              {isModified && (
-                <p className="text-xs text-primary">Recipe modified from preset</p>
+              <Toggle
+                pressed={autoRotate}
+                onPressedChange={setAutoRotate}
+                size="sm"
+                aria-label="Toggle animation"
+              >
+                <RotateCw className={`h-4 w-4 ${autoRotate ? 'animate-spin' : ''}`} />
+                <span className="ml-1">{autoRotate ? 'Animating' : 'Animate'}</span>
+              </Toggle>
+            </div>
+          </CardHeader>
+
+          <CardContent className="overflow-y-auto flex-1 min-h-0 pt-0 pb-4">
+            <div className="space-y-4">
+              {/* Preset selector */}
+              <div className="space-y-2">
+                <Label>Start from Preset</Label>
+                <div className="grid grid-cols-2 gap-1">
+                  {PRESETS.map((preset) => (
+                    <Button
+                      key={preset.value}
+                      variant={selectedPreset === preset.value && !isModified ? 'default' : 'secondary'}
+                      size="sm"
+                      onClick={() => handlePresetSelect(preset.value)}
+                      className="w-full text-xs"
+                    >
+                      {preset.label}
+                    </Button>
+                  ))}
+                </div>
+                {isModified && (
+                  <p className="text-xs text-primary">Recipe modified from preset</p>
+                )}
+              </div>
+
+              <Separator />
+
+              {/* Recipe builder */}
+              <RecipeBuilder
+                layers={layers}
+                onLayersChange={handleLayersChange}
+              />
+
+              {/* Error display */}
+              {error && (
+                <p className="text-destructive text-xs bg-destructive/10 p-2 rounded-md">
+                  {error.message}
+                </p>
               )}
             </div>
-
-            <Separator />
-
-            {/* Recipe builder */}
-            <RecipeBuilder
-              layers={layers}
-              onLayersChange={handleLayersChange}
-            />
-
-            {/* Error display */}
-            {error && (
-              <p className="text-destructive text-xs bg-destructive/10 p-2 rounded-md">
-                {error.message}
-              </p>
-            )}
-          </div>
-        </CardContent>
-      </Card>
+          </CardContent>
+        </Card>
+      )}
 
       {/* File size display */}
       {fileSize && (
