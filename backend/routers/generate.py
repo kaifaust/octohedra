@@ -18,6 +18,12 @@ PresetType = Literal["flake", "tower", "evil_tower", "flower"]
 BranchDirection = Literal["+x", "-x", "+y", "-y"]
 
 
+class DepthRule(BaseModel):
+    """A depth rule that modifies branching behavior at a specific depth."""
+    depth: int = Field(..., ge=1, le=5, description="Depth level this applies to")
+    type: NodeType = Field(default="flake", description="Node type at this depth")
+
+
 class Layer(BaseModel):
     """A single layer in the recipe (a positioned flake)."""
     depth: int = Field(default=3, ge=1, le=5, description="Flake depth for this layer")
@@ -32,12 +38,10 @@ class Layer(BaseModel):
         default=True,
         description="Each sub-branch excludes direction back to its parent (symmetric orbiting)"
     )
-
-
-class DepthRule(BaseModel):
-    """A depth rule that modifies branching behavior at a specific depth."""
-    depth: int = Field(..., ge=1, le=5, description="Depth level this applies to")
-    type: NodeType = Field(default="flake", description="Node type at this depth")
+    depth_rules: Optional[List[DepthRule]] = Field(
+        default=None,
+        description="Per-layer depth rules that override global rules"
+    )
 
 
 class GenerateRequest(BaseModel):

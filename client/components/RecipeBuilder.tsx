@@ -12,43 +12,46 @@ import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip
 
 interface RecipeBuilderProps {
   layers: Layer[];
-  depthRules: DepthRule[];
   onLayersChange: (layers: Layer[]) => void;
-  onDepthRulesChange: (rules: DepthRule[]) => void;
 }
 
 export function RecipeBuilder({
   layers,
-  depthRules,
   onLayersChange,
-  onDepthRulesChange,
 }: RecipeBuilderProps) {
-  // Get the depth rule for a specific depth
-  const getRuleForDepth = useCallback((depth: number): NodeType => {
-    const rule = depthRules.find(r => r.depth === depth);
+  // Get the depth rule for a specific layer and depth
+  const getRuleForDepth = useCallback((layerIndex: number, depth: number): NodeType => {
+    const layerRules = layers[layerIndex]?.depth_rules || [];
+    const rule = layerRules.find(r => r.depth === depth);
     return rule?.type || 'flake';
-  }, [depthRules]);
+  }, [layers]);
 
-  // Update or add a depth rule
-  const setRuleForDepth = useCallback((depth: number, type: NodeType) => {
+  // Update or add a depth rule for a specific layer
+  const setRuleForDepth = useCallback((layerIndex: number, depth: number, type: NodeType) => {
+    const layer = layers[layerIndex];
+    const currentRules = layer.depth_rules || [];
     let newRules: DepthRule[];
 
     if (type === 'flake') {
       // Remove the rule if setting back to default
-      newRules = depthRules.filter(r => r.depth !== depth);
+      newRules = currentRules.filter(r => r.depth !== depth);
     } else {
-      const existing = depthRules.find(r => r.depth === depth);
+      const existing = currentRules.find(r => r.depth === depth);
       if (existing) {
-        newRules = depthRules.map(r =>
+        newRules = currentRules.map(r =>
           r.depth === depth ? { depth, type } : r
         );
       } else {
-        newRules = [...depthRules, { depth, type }];
+        newRules = [...currentRules, { depth, type }];
       }
     }
 
-    onDepthRulesChange(newRules);
-  }, [depthRules, onDepthRulesChange]);
+    // Update the layer with the new rules
+    const newLayers = layers.map((l, i) =>
+      i === layerIndex ? { ...l, depth_rules: newRules.length > 0 ? newRules : undefined } : l
+    );
+    onLayersChange(newLayers);
+  }, [layers, onLayersChange]);
 
   // Update a layer
   const updateLayer = useCallback((index: number, updates: Partial<Layer>) => {
@@ -182,7 +185,7 @@ export function RecipeBuilder({
                 <Label className="text-xs text-muted-foreground">Node Types by Depth</Label>
                 <div className="space-y-1.5">
                   {depthLevels.map((depth) => {
-                    const currentType = getRuleForDepth(depth);
+                    const currentType = getRuleForDepth(index, depth);
                     const isDefault = currentType === 'flake';
 
                     return (
@@ -196,7 +199,7 @@ export function RecipeBuilder({
                           type="single"
                           value={currentType}
                           onValueChange={(value) => {
-                            if (value) setRuleForDepth(depth, value as NodeType);
+                            if (value) setRuleForDepth(index, depth, value as NodeType);
                           }}
                           variant="outline"
                           className="flex-1 justify-start gap-1"

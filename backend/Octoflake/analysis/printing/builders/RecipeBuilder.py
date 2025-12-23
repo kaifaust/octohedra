@@ -248,8 +248,14 @@ class RecipeBuilder(OctoBuilder):
                 result.add(self.DIR_STRING_TO_TUPLE[d])
         return result
 
-    def _get_rule_for_depth(self, depth: int) -> Dict:
-        """Get the depth rule for a given depth, or default to flake behavior."""
+    def _get_rule_for_depth(self, depth: int, layer_rules: Optional[List[Dict]] = None) -> Dict:
+        """Get the depth rule for a given depth, checking layer-specific rules first."""
+        # Check layer-specific rules first
+        if layer_rules:
+            for rule in layer_rules:
+                if rule.get("depth") == depth:
+                    return rule
+        # Fall back to global rules
         return self._depth_rule_map.get(depth, {"depth": depth, "type": "flake"})
 
     def _get_directions_for_type(self, node_type: str) -> list:
@@ -271,6 +277,7 @@ class RecipeBuilder(OctoBuilder):
             layer_fill = layer.get("fill_depth", 0)
             z_offset = layer.get("z_offset")
             has_branches = layer.get("branches", False)
+            layer_rules = layer.get("depth_rules")  # Per-layer depth rules
 
             # Calculate z position
             if z_offset is not None:
@@ -282,7 +289,7 @@ class RecipeBuilder(OctoBuilder):
 
             # Build this layer's flake with depth rules applied
             layer_grid = OctoGrid()
-            self._build_flake_recursive(layer_grid, layer_depth, layer_fill, layer_center)
+            self._build_flake_recursive(layer_grid, layer_depth, layer_fill, layer_center, layer_rules)
 
             # Merge into combined grid
             combined_grid = OctoGrid.merge(combined_grid, layer_grid)
@@ -346,7 +353,7 @@ class RecipeBuilder(OctoBuilder):
 
         return combined_grid
 
-    def _build_flake_recursive(self, grid: OctoGrid, depth: int, fill_depth: int, center: OctoVector):
+    def _build_flake_recursive(self, grid: OctoGrid, depth: int, fill_depth: int, center: OctoVector, layer_rules: Optional[List[Dict]] = None):
         """Recursively build a flake, applying depth rules."""
         if depth <= 0:
             grid.insert_cell(center)
@@ -358,8 +365,8 @@ class RecipeBuilder(OctoBuilder):
             grid.fill(radius, center)
             return
 
-        # Check depth rules for special behavior
-        rule = self._get_rule_for_depth(depth)
+        # Check depth rules for special behavior (layer-specific rules take priority)
+        rule = self._get_rule_for_depth(depth, layer_rules)
         node_type = rule.get("type", "flake")
 
         # Handle solid fill - fills the entire region at this depth
@@ -372,7 +379,7 @@ class RecipeBuilder(OctoBuilder):
         if node_type == "skip":
             for direction in self.ALL_DIRS:
                 next_center = center + p2(depth - 1) * 2 * direction
-                self._build_flake_recursive(grid, depth - 1, fill_depth, next_center)
+                self._build_flake_recursive(grid, depth - 1, fill_depth, next_center, layer_rules)
             return
 
         # Get directions based on node type (horizontal, vertical, or all)
@@ -381,7 +388,7 @@ class RecipeBuilder(OctoBuilder):
         # Recurse into each direction
         for direction in directions:
             next_center = center + p2(depth - 1) * 2 * direction
-            self._build_flake_recursive(grid, depth - 1, fill_depth, next_center)
+            self._build_flake_recursive(grid, depth - 1, fill_depth, next_center, layer_rules)
 
 
 def generate_from_recipe(

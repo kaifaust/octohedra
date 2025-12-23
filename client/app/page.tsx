@@ -5,7 +5,7 @@ import { RotateCw } from 'lucide-react';
 import { FractalViewer } from '@/components/FractalViewer';
 import { RecipeBuilder } from '@/components/RecipeBuilder';
 import { useFractalGeneration } from '@/hooks/useFractalGeneration';
-import { PresetType, Layer, DepthRule, PRESETS } from '@/lib/api';
+import { PresetType, Layer, PRESETS } from '@/lib/api';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
@@ -17,9 +17,8 @@ export default function Home() {
   // Current preset (for the selector)
   const [selectedPreset, setSelectedPreset] = useState<PresetType>('flake');
 
-  // Recipe state (layers + depth rules + six_way)
+  // Recipe state (layers + six_way)
   const [layers, setLayers] = useState<Layer[]>([{ depth: 2, fill_depth: 0 }]);
-  const [depthRules, setDepthRules] = useState<DepthRule[]>([]);
   const [sixWay, setSixWay] = useState(false);
 
   // Track if recipe has been modified from preset
@@ -45,7 +44,6 @@ export default function Home() {
     const recipe = await fetchPresetRecipe(preset);
     if (recipe) {
       setLayers(recipe.layers);
-      setDepthRules(recipe.depth_rules);
       setSixWay(recipe.six_way || false);
       setIsModified(false);
     }
@@ -67,13 +65,11 @@ export default function Home() {
     const recipe = await fetchPresetRecipe(preset);
     if (recipe) {
       setLayers(recipe.layers);
-      setDepthRules(recipe.depth_rules);
       setSixWay(recipe.six_way || false);
       setIsModified(false);
       // Generate immediately with the loaded recipe
       generate({
         layers: recipe.layers,
-        depth_rules: recipe.depth_rules,
         six_way: recipe.six_way,
       });
     }
@@ -82,11 +78,6 @@ export default function Home() {
   // Handle recipe changes (mark as modified and auto-generate)
   const handleLayersChange = useCallback((newLayers: Layer[]) => {
     setLayers(newLayers);
-    setIsModified(true);
-  }, []);
-
-  const handleDepthRulesChange = useCallback((newRules: DepthRule[]) => {
-    setDepthRules(newRules);
     setIsModified(true);
   }, []);
 
@@ -101,13 +92,12 @@ export default function Home() {
     const timer = setTimeout(() => {
       generate({
         layers,
-        depth_rules: depthRules,
         six_way: sixWay,
       });
     }, 300); // 300ms debounce
 
     return () => clearTimeout(timer);
-  }, [layers, depthRules, sixWay, generate]);
+  }, [layers, sixWay, generate]);
 
   // Mark initial load as done after first generation
   useEffect(() => {
@@ -174,9 +164,7 @@ export default function Home() {
             {/* Recipe builder */}
             <RecipeBuilder
               layers={layers}
-              depthRules={depthRules}
               onLayersChange={handleLayersChange}
-              onDepthRulesChange={handleDepthRulesChange}
             />
 
             {/* Error display */}
