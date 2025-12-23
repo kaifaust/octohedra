@@ -86,21 +86,21 @@ PRESET_RECIPES = {
     },
     "evil_tower": {
         # Evil tower: tower with sub-towers branching in 4 directions at each level
-        # Unlike flower, each sub-branch is a full tower, not recursive
+        # Unlike flower, includes inwards so sub-branches can also branch back toward center
         "layers": [
-            {"depth": 3, "fill_depth": 0, "branches": True, "branch_directions": ["+x", "-x", "+y", "-y"], "branch_exclude_origin": False},
-            {"depth": 2, "fill_depth": 0, "branches": True, "branch_directions": ["+x", "-x", "+y", "-y"], "branch_exclude_origin": False},
+            {"depth": 3, "fill_depth": 0, "branches": True, "branch_directions": ["outwards", "inwards", "sideways", "upwards"]},
+            {"depth": 2, "fill_depth": 0, "branches": True, "branch_directions": ["outwards", "inwards", "sideways", "upwards"]},
             {"depth": 1, "fill_depth": 0},
         ],
         "depth_rules": [],
     },
     "flower": {
         # Flower: tower with horizontal branches at each layer (matching FlowerTower)
-        # All 4 directions, but branch_exclude_origin=True prevents back-branching
+        # Outwards + sideways + upwards, but NOT inwards (prevents back-branching toward center)
         "layers": [
-            {"depth": 4, "fill_depth": 0, "branches": True, "branch_directions": ["+x", "-x", "+y", "-y"], "branch_exclude_origin": True},
-            {"depth": 3, "fill_depth": 0, "branches": True, "branch_directions": ["+x", "-x", "+y", "-y"], "branch_exclude_origin": True},
-            {"depth": 2, "fill_depth": 0, "branches": True, "branch_directions": ["+x", "-x", "+y", "-y"], "branch_exclude_origin": True},
+            {"depth": 4, "fill_depth": 0, "branches": True, "branch_directions": ["outwards", "sideways", "upwards"]},
+            {"depth": 3, "fill_depth": 0, "branches": True, "branch_directions": ["outwards", "sideways", "upwards"]},
+            {"depth": 2, "fill_depth": 0, "branches": True, "branch_directions": ["outwards", "sideways", "upwards"]},
             {"depth": 1, "fill_depth": 0},
         ],
         "depth_rules": [],
@@ -138,7 +138,7 @@ def get_preset_recipe(name: str, depth: int = 3, fill_depth: int = 0, stack_heig
     elif name == "evil_tower":
         # Evil tower: tower with sub-towers branching in 4 directions at each level
         # Matches EvilTower(base_i=depth, min_i=1)
-        # Unlike flower, branch_exclude_origin=False so all 4 directions spawn
+        # Includes inwards so sub-branches can also branch back toward center
         layers = []
         min_depth = max(1, depth - stack_height)
         for d in range(depth, min_depth - 1, -1):
@@ -149,15 +149,14 @@ def get_preset_recipe(name: str, depth: int = 3, fill_depth: int = 0, stack_heig
                 "branches": has_branches,
             }
             if has_branches:
-                layer["branch_directions"] = ["+x", "-x", "+y", "-y"]
-                layer["branch_exclude_origin"] = False  # All 4 directions spawn towers
+                layer["branch_directions"] = ["outwards", "inwards", "sideways", "upwards"]
             layers.append(layer)
         return {"layers": layers, "depth_rules": []}
 
     elif name == "flower":
         # Flower: tower with branches at each layer (except the last)
         # Matches FlowerTower(base_i=depth, min_i=1)
-        # All 4 directions with branch_exclude_origin=True for symmetric orbiting
+        # Outwards + sideways + upwards, but NOT inwards (prevents back-branching)
         layers = []
         min_depth = max(1, depth - stack_height - 1)
         for d in range(depth, min_depth - 1, -1):
@@ -169,8 +168,7 @@ def get_preset_recipe(name: str, depth: int = 3, fill_depth: int = 0, stack_heig
                 "branches": has_branches,
             }
             if has_branches:
-                layer["branch_directions"] = ["+x", "-x", "+y", "-y"]
-                layer["branch_exclude_origin"] = True
+                layer["branch_directions"] = ["outwards", "sideways", "upwards"]
             layers.append(layer)
         return {"layers": layers, "depth_rules": []}
 
@@ -200,8 +198,8 @@ class RecipeBuilder(OctoBuilder):
     depth_rules: List[Dict] = field(default_factory=list)
     center: OctoVector = field(default_factory=OctoVector)
 
-    # For branch recursion: which directions are allowed
-    allowed_dirs: Optional[Set[Tuple[int, int]]] = None
+    # For branch recursion: the direction we came from (to compute relative directions)
+    origin_dir: Optional[Tuple[int, int]] = None
 
     # Legacy parameters (for backwards compatibility)
     max_depth: int = 3
@@ -228,24 +226,50 @@ class RecipeBuilder(OctoBuilder):
         # Build lookup for depth rules
         self._depth_rule_map = {r.get("depth"): r for r in self.depth_rules}
 
-        # Default to all directions for branching
-        if self.allowed_dirs is None:
-            self.allowed_dirs = self.ALL_HORIZ_DIRS.copy()
+    def _compute_branch_directions(
+        self,
+        directions: List[str],
+        origin_dir: Optional[Tuple[int, int]],
+    ) -> Set[Tuple[int, int]]:
+        """
+        Compute branch directions based on semantic options and origin direction.
 
-    # Direction string to tuple mapping
-    DIR_STRING_TO_TUPLE = {
-        "+x": (1, 0),
-        "-x": (-1, 0),
-        "+y": (0, 1),
-        "-y": (0, -1),
-    }
+        Args:
+            directions: List of semantic directions like 'outwards', 'inwards', 'sideways', 'upwards'
+            origin_dir: The direction we came from (e.g., (1, 0) if we branched from +x)
+                       None for the root level (all horizontal directions are valid)
 
-    def _parse_branch_directions(self, directions: List[str]) -> Set[Tuple[int, int]]:
-        """Convert branch direction strings to tuple set."""
+        Returns:
+            Set of (dx, dy) tuples representing allowed horizontal branch directions
+        """
         result = set()
+
+        # If no origin, we're at the root - use all horizontal directions
+        if origin_dir is None:
+            # At root, 'outwards' means all 4 directions
+            if "outwards" in directions:
+                result.update(self.ALL_HORIZ_DIRS)
+            return result
+
+        ox, oy = origin_dir
+
         for d in directions:
-            if d in self.DIR_STRING_TO_TUPLE:
-                result.add(self.DIR_STRING_TO_TUPLE[d])
+            if d == "outwards":
+                # Continue away from parent (same direction we traveled to get here)
+                result.add((ox, oy))
+            elif d == "inwards":
+                # Back toward parent (opposite of direction we traveled)
+                result.add((-ox, -oy))
+            elif d == "sideways":
+                # Perpendicular to origin direction
+                if ox != 0:
+                    result.add((0, 1))
+                    result.add((0, -1))
+                else:
+                    result.add((1, 0))
+                    result.add((-1, 0))
+            # 'upwards' is handled separately (controls +z continuation)
+
         return result
 
     def _get_rule_for_depth(self, depth: int, layer_rules: Optional[List[Dict]] = None) -> Dict:
@@ -271,17 +295,26 @@ class RecipeBuilder(OctoBuilder):
         """Build the complete structure from layers."""
         combined_grid = OctoGrid()
         current_z = 0
+        prev_layer = None  # Track previous layer for attach_next_at
 
         for layer_idx, layer in enumerate(self.layers):
             layer_depth = layer.get("depth", 3)
             layer_fill = layer.get("fill_depth", 0)
-            z_offset = layer.get("z_offset")
             has_branches = layer.get("branches", False)
             layer_rules = layer.get("depth_rules")  # Per-layer depth rules
 
-            # Calculate z position
-            if z_offset is not None:
-                layer_z = z_offset
+            # Calculate z position based on previous layer's attach_next_at
+            if prev_layer is not None:
+                attach_at = prev_layer.get("attach_next_at")
+                prev_depth = prev_layer.get("depth", 3)
+                if attach_at is not None:
+                    # Attach at a specific depth level of the previous layer
+                    # The position of depth A in the previous layer is p2(A + 1) from prev layer's center
+                    # prev layer center was at (current_z - p2(prev_depth + 1))
+                    prev_layer_center_z = current_z - p2(prev_depth + 1)
+                    layer_z = prev_layer_center_z + p2(attach_at + 1)
+                else:
+                    layer_z = current_z
             else:
                 layer_z = current_z
 
@@ -299,31 +332,22 @@ class RecipeBuilder(OctoBuilder):
                 # Get remaining layers for sub-structures
                 remaining_layers = self.layers[layer_idx + 1:]
                 if remaining_layers:
-                    # Get branch directions: intersect layer's directions with allowed_dirs
+                    # Get branch directions (semantic: outwards, inwards, sideways, upwards)
                     layer_branch_dirs = layer.get("branch_directions")
 
-                    # Check if +z is included (controls whether central stack continues upward)
-                    include_z = True  # Default: continue building central stack
-                    if layer_branch_dirs is not None:
-                        include_z = "+z" in layer_branch_dirs
-                        # Convert string directions to tuples (only horizontal directions)
-                        layer_dirs = self._parse_branch_directions(layer_branch_dirs)
-                        # Intersect with allowed_dirs (what we're allowed based on where we came from)
-                        if self.allowed_dirs is not None:
-                            current_dirs = layer_dirs & self.allowed_dirs
-                        else:
-                            current_dirs = layer_dirs
-                    elif self.allowed_dirs is not None:
-                        current_dirs = self.allowed_dirs.copy()
-                    else:
-                        current_dirs = self.ALL_HORIZ_DIRS.copy()
+                    # Default directions if not specified
+                    if layer_branch_dirs is None:
+                        layer_branch_dirs = ["outwards", "sideways", "upwards"]
 
-                    # Spawn sub-structures in allowed horizontal directions
+                    # Check if upwards is included (controls whether central stack continues)
+                    include_upwards = "upwards" in layer_branch_dirs
+
+                    # Compute which horizontal directions to branch based on origin
+                    current_dirs = self._compute_branch_directions(layer_branch_dirs, self.origin_dir)
+
+                    # Spawn sub-structures in computed horizontal directions
                     branch_offset = p2(layer_depth + 1)
                     branch_z_offset = current_z + p2(layer_depth + 1) - p2(layer_depth)
-
-                    # Get exclude_origin setting (default True for symmetric orbiting)
-                    exclude_origin = layer.get("branch_exclude_origin", True)
 
                     for dx, dy in current_dirs:
                         # Calculate branch position
@@ -333,31 +357,27 @@ class RecipeBuilder(OctoBuilder):
                             branch_z_offset
                         )
 
-                        # Determine directions for sub-structure
-                        if exclude_origin:
-                            # Remove direction pointing back to parent (symmetric orbiting)
-                            sub_dirs = current_dirs.copy()
-                            sub_dirs.discard((-dx, -dy))
-                        else:
-                            # Keep all directions (asymmetric, can branch back)
-                            sub_dirs = current_dirs.copy()
+                        # The sub-builder's origin is the direction we're branching
+                        # (from the sub-builder's perspective, this is where it came from)
+                        sub_origin = (dx, dy)
 
                         # Build sub-structure with remaining layers
                         sub_builder = RecipeBuilder(
                             layers=remaining_layers,
                             depth_rules=self.depth_rules,
                             center=branch_center,
-                            allowed_dirs=sub_dirs,
+                            origin_dir=sub_origin,
                         )
                         sub_grid = sub_builder.materialize_additive()
                         combined_grid = OctoGrid.merge(combined_grid, sub_grid)
 
-                    # If +z is excluded, skip remaining layers at center
-                    if not include_z:
+                    # If upwards is excluded, skip remaining layers at center
+                    if not include_upwards:
                         break
 
-            # Move up for next layer
-            current_z += p2(layer_depth + 1)
+            # Move up for next layer (from where this layer was placed)
+            current_z = layer_z + p2(layer_depth + 1)
+            prev_layer = layer
 
         return combined_grid
 

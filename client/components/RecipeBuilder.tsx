@@ -2,8 +2,9 @@
 
 import { useCallback } from 'react';
 import { Plus, X, ChevronDown, ChevronUp } from 'lucide-react';
-import { Layer, DepthRule, NodeType, NODE_TYPES, BranchDirection, ALL_BRANCH_DIRECTIONS } from '@/lib/api';
+import { Layer, DepthRule, NodeType, NODE_TYPES, BranchDirection, ALL_BRANCH_DIRECTIONS, BRANCH_DIRECTION_OPTIONS } from '@/lib/api';
 import { Button } from '@/components/ui/button';
+import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
 import { Slider } from '@/components/ui/slider';
 import { Switch } from '@/components/ui/switch';
@@ -84,9 +85,9 @@ export function RecipeBuilder({
     onLayersChange(newLayers);
   }, [layers, onLayersChange]);
 
-  // Generate depth levels for a layer (from layer.depth down to 1)
+  // Generate depth levels for a layer (from 1 up to layer.depth)
   const getDepthLevels = (layerDepth: number) =>
-    Array.from({ length: layerDepth }, (_, i) => layerDepth - i);
+    Array.from({ length: layerDepth }, (_, i) => i + 1);
 
   return (
     <div className="space-y-3">
@@ -182,11 +183,24 @@ export function RecipeBuilder({
 
               {/* Depth rules for this layer */}
               <div className="space-y-2">
-                <Label className="text-xs text-muted-foreground">Node Types by Depth</Label>
+                <div className="flex items-center justify-between">
+                  <Label className="text-xs text-muted-foreground">Nodes</Label>
+                  <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Label className="text-xs text-muted-foreground cursor-help">Attach</Label>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <p>Next layer attaches at checked depth</p>
+                  </TooltipContent>
+                </Tooltip>
+                </div>
                 <div className="space-y-1.5">
                   {depthLevels.map((depth) => {
                     const currentType = getRuleForDepth(index, depth);
                     const isDefault = currentType === 'flake';
+                    // Default attach point is the top (layer.depth) when attach_next_at is undefined
+                    const isAttachPoint = layer.attach_next_at === depth ||
+                      (layer.attach_next_at === undefined && depth === layer.depth);
 
                     return (
                       <div key={depth} className="flex items-center gap-2">
@@ -225,88 +239,60 @@ export function RecipeBuilder({
                             </Tooltip>
                           ))}
                         </ToggleGroup>
+                        <Checkbox
+                          checked={isAttachPoint}
+                          onCheckedChange={(checked) => {
+                            updateLayer(index, {
+                              attach_next_at: checked ? depth : undefined
+                            });
+                          }}
+                        />
                       </div>
                     );
                   })}
                 </div>
               </div>
 
-              {/* Branches toggle - only show if there are more layers below */}
-              {index < layers.length - 1 && (
-                <div className="space-y-2 pt-1 border-t border-border/30">
-                  <div className="flex items-center gap-2 pt-2">
-                    <Switch
-                      checked={layer.branches ?? false}
-                      onCheckedChange={(checked) => updateLayer(index, { branches: checked })}
-                    />
-                    <Label className="text-xs">Branch to sub-layers</Label>
-                  </div>
+              {/* Branches toggle */}
+              <div className="space-y-2 pt-1 border-t border-border/30">
+                <div className="flex items-center gap-2 pt-2">
+                  <Switch
+                    checked={layer.branches ?? false}
+                    onCheckedChange={(checked) => updateLayer(index, { branches: checked })}
+                  />
+                  <Label className="text-xs">Branch to sub-layers</Label>
+                </div>
 
                   {/* Branch options - only show when branches enabled */}
                   {layer.branches && (
-                    <div className="ml-6 space-y-2">
+                    <div className="ml-6 space-y-1">
                       {/* Direction toggles */}
-                      <div className="space-y-1">
-                        <Label className="text-xs text-muted-foreground">Directions</Label>
-                        <ToggleGroup
-                          type="multiple"
-                          value={layer.branch_directions || ALL_BRANCH_DIRECTIONS}
-                          onValueChange={(value) => {
-                            if (value.length > 0) {
-                              updateLayer(index, { branch_directions: value as BranchDirection[] });
-                            }
-                          }}
-                          variant="outline"
-                          className="justify-start gap-1"
-                        >
-                          {ALL_BRANCH_DIRECTIONS.map((dir) => {
-                            const isSelected = (layer.branch_directions || ALL_BRANCH_DIRECTIONS).includes(dir);
-                            const tooltip = dir === '+z' ? 'Continue building central stack upward' : `Branch in ${dir} direction`;
-                            return (
-                              <Tooltip key={dir}>
-                                <TooltipTrigger asChild>
-                                  <ToggleGroupItem
-                                    value={dir}
-                                    size="sm"
-                                    className={`font-mono text-xs px-2 h-6 ${
-                                      isSelected
-                                        ? 'bg-primary text-primary-foreground hover:bg-primary/90 hover:text-primary-foreground'
-                                        : ''
-                                    }`}
-                                  >
-                                    {dir}
-                                  </ToggleGroupItem>
-                                </TooltipTrigger>
-                                <TooltipContent>
-                                  <p>{tooltip}</p>
-                                </TooltipContent>
-                              </Tooltip>
-                            );
-                          })}
-                        </ToggleGroup>
-                      </div>
-
-                      {/* Orbit toggle */}
-                      <div className="flex items-center gap-2">
-                        <Switch
-                          checked={layer.branch_exclude_origin !== false}
-                          onCheckedChange={(checked) => updateLayer(index, { branch_exclude_origin: checked })}
-                        />
-                        <Tooltip>
-                          <TooltipTrigger asChild>
-                            <Label className="text-xs cursor-help">
-                              Orbit mode
-                            </Label>
-                          </TooltipTrigger>
-                          <TooltipContent>
-                            <p>Sub-branches can&apos;t branch back toward parent</p>
-                          </TooltipContent>
-                        </Tooltip>
-                      </div>
+                      <ToggleGroup
+                        type="multiple"
+                        value={layer.branch_directions || ALL_BRANCH_DIRECTIONS}
+                        onValueChange={(value) => {
+                          if (value.length > 0) {
+                            updateLayer(index, { branch_directions: value as BranchDirection[] });
+                          }
+                        }}
+                        variant="outline"
+                        className="justify-start gap-1"
+                      >
+                        {BRANCH_DIRECTION_OPTIONS.map((opt) => (
+                          <ToggleGroupItem
+                            key={opt.value}
+                            value={opt.value}
+                            size="sm"
+                            className="text-xs px-2 h-6 data-[state=on]:bg-primary data-[state=on]:text-primary-foreground"
+                            title={opt.description}
+                          >
+                            {opt.label}
+                          </ToggleGroupItem>
+                        ))}
+                      </ToggleGroup>
                     </div>
                   )}
                 </div>
-              )}
             </div>
           );
         })}

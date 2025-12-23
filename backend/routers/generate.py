@@ -14,8 +14,12 @@ NodeType = Literal["flake", "solid", "horizontal", "vertical"]
 # Available preset names (original artist shapes only)
 PresetType = Literal["flake", "tower", "evil_tower", "flower"]
 
-# Branch directions
-BranchDirection = Literal["+x", "-x", "+y", "-y", "+z"]
+# Branch directions (relative to parent direction)
+# - outwards: away from parent (if came from +x, go -x, +y, -y)
+# - inwards: back toward parent (if came from +x, go +x)
+# - sideways: perpendicular to parent (if came from +x, go +y, -y)
+# - upwards: continue building central stack (+z)
+BranchDirection = Literal["outwards", "inwards", "sideways", "upwards"]
 
 
 class DepthRule(BaseModel):
@@ -28,15 +32,14 @@ class Layer(BaseModel):
     """A single layer in the recipe (a positioned flake)."""
     depth: int = Field(default=3, ge=1, le=5, description="Flake depth for this layer")
     fill_depth: int = Field(default=0, ge=0, le=5, description="Fill depth (0 = fractal, >0 = solid interior)")
-    z_offset: Optional[int] = Field(default=None, description="Manual Z offset (auto-calculated if omitted)")
+    attach_next_at: Optional[int] = Field(
+        default=None, ge=1, le=5,
+        description="Next layer attaches at this depth level (default: stack on top)"
+    )
     branches: bool = Field(default=False, description="Spawn sub-structures in horizontal directions")
     branch_directions: Optional[List[BranchDirection]] = Field(
         default=None,
-        description="Which directions to branch (default: all 4). Options: +x, -x, +y, -y"
-    )
-    branch_exclude_origin: bool = Field(
-        default=True,
-        description="Each sub-branch excludes direction back to its parent (symmetric orbiting)"
+        description="Which directions to branch. Options: outwards, inwards, sideways, upwards"
     )
     depth_rules: Optional[List[DepthRule]] = Field(
         default=None,
@@ -98,7 +101,7 @@ async def generate(request: GenerateRequest):
     Stack flakes vertically. Each layer has:
     - `depth`: Size/complexity of the flake (1-5)
     - `fill_depth`: How much to fill solid (0 = pure fractal)
-    - `z_offset`: Manual positioning (optional)
+    - `attach_next_at`: Next layer attaches at this depth level (optional)
 
     ### Depth Rules
     Modify branching at specific depths:
