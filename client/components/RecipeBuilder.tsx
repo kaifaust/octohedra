@@ -2,7 +2,7 @@
 
 import { useCallback } from 'react';
 import { Plus, X, ChevronDown, ChevronUp, Copy } from 'lucide-react';
-import { Layer, DepthRule, NodeType, NODE_TYPES, BranchDirection, BRANCH_DIRECTION_OPTIONS } from '@/lib/api';
+import { Layer, DepthRule, NodeType, BranchDirection, BRANCH_DIRECTION_OPTIONS, nodeTypeToBranching, branchingToNodeType } from '@/lib/api';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
@@ -188,64 +188,74 @@ export function RecipeBuilder({
                 </div>
               </div>
 
-              {/* Depth rules for this layer */}
+              {/* Depth rules for this layer - octahedron branching per depth */}
               <div className="space-y-2">
                 <div className="flex items-center justify-between">
-                  <Label className="text-xs text-muted-foreground">Nodes</Label>
+                  <Label className="text-xs text-muted-foreground">Octahedra at each depth</Label>
                   <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Label className="text-xs text-muted-foreground cursor-help">Attach</Label>
-                  </TooltipTrigger>
-                  <TooltipContent>
-                    <p>Next layer attaches at checked depth</p>
-                  </TooltipContent>
-                </Tooltip>
+                    <TooltipTrigger asChild>
+                      <Label className="text-xs text-muted-foreground cursor-help">Attach</Label>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      <p>Next layer attaches at checked depth</p>
+                    </TooltipContent>
+                  </Tooltip>
                 </div>
                 <div className="space-y-1.5">
                   {depthLevels.map((depth) => {
                     const currentType = getRuleForDepth(index, depth);
-                    const isDefault = currentType === 'flake';
+                    const { horizontal, vertical, fill } = nodeTypeToBranching(currentType);
                     // Default attach point is the top (layer.depth) when attach_next_at is undefined
                     const isAttachPoint = layer.attach_next_at === depth ||
                       (layer.attach_next_at === undefined && depth === layer.depth);
 
+                    const updateBranching = (h: boolean, v: boolean, f: boolean) => {
+                      const newType = branchingToNodeType(h, v, f);
+                      setRuleForDepth(index, depth, newType);
+                    };
+
                     return (
-                      <div key={depth} className="flex items-center gap-2">
-                        <span className={`w-5 text-center text-xs font-mono ${
-                          isDefault ? 'text-muted-foreground' : 'text-primary'
-                        }`}>
+                      <div key={depth} className="flex items-center gap-3">
+                        <span className="w-4 text-center text-xs font-mono text-muted-foreground">
                           {depth}
                         </span>
-                        <ToggleGroup
-                          type="single"
-                          value={currentType}
-                          onValueChange={(value) => {
-                            if (value) setRuleForDepth(index, depth, value as NodeType);
-                          }}
-                          variant="outline"
-                          className="flex-1 justify-start"
-                        >
-                          {NODE_TYPES.map((nodeType) => (
-                            <Tooltip key={nodeType.value}>
-                              <TooltipTrigger asChild>
-                                <ToggleGroupItem
-                                  value={nodeType.value}
-                                  size="sm"
-                                  className={`text-xs h-6 px-2 ${
-                                    currentType === nodeType.value
-                                      ? 'bg-primary text-primary-foreground hover:bg-primary/90 hover:text-primary-foreground'
-                                      : ''
-                                  }`}
-                                >
-                                  {nodeType.label}
-                                </ToggleGroupItem>
-                              </TooltipTrigger>
-                              <TooltipContent>
-                                <p>{nodeType.description}</p>
-                              </TooltipContent>
-                            </Tooltip>
-                          ))}
-                        </ToggleGroup>
+                        <div className="flex items-center gap-3 flex-1">
+                          <label className="flex items-center gap-1.5 cursor-pointer">
+                            <Checkbox
+                              checked={horizontal && !fill}
+                              onCheckedChange={(checked) => {
+                                // Clicking H turns off fill
+                                updateBranching(!!checked, vertical, false);
+                              }}
+                            />
+                            <span className="text-xs">H</span>
+                          </label>
+                          <label className="flex items-center gap-1.5 cursor-pointer">
+                            <Checkbox
+                              checked={vertical && !fill}
+                              onCheckedChange={(checked) => {
+                                // Clicking V turns off fill
+                                updateBranching(horizontal, !!checked, false);
+                              }}
+                            />
+                            <span className="text-xs">V</span>
+                          </label>
+                          <label className="flex items-center gap-1.5 cursor-pointer">
+                            <Checkbox
+                              checked={fill}
+                              onCheckedChange={(checked) => {
+                                if (checked) {
+                                  // Enable fill (turns off H and V)
+                                  updateBranching(false, false, true);
+                                } else {
+                                  // Disable fill - restore to default (both H and V)
+                                  updateBranching(true, true, false);
+                                }
+                              }}
+                            />
+                            <span className="text-xs text-muted-foreground">Fill</span>
+                          </label>
+                        </div>
                         <Checkbox
                           checked={isAttachPoint}
                           onCheckedChange={(checked) => {

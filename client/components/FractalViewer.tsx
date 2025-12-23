@@ -3,7 +3,7 @@
 import { Canvas, useFrame, useThree } from '@react-three/fiber';
 import { TrackballControls } from '@react-three/drei';
 import { OBJLoader } from 'three-stdlib';
-import { useMemo, Suspense, useRef } from 'react';
+import { useMemo, Suspense, useRef, useEffect } from 'react';
 import * as THREE from 'three';
 import type { TrackballControls as TrackballControlsType } from 'three-stdlib';
 
@@ -19,14 +19,17 @@ function FractalModel({ objData }: { objData: string }) {
     const loader = new OBJLoader();
     const group = loader.parse(objData);
 
-    let geo: THREE.BufferGeometry | null = null;
+    let foundGeo: THREE.BufferGeometry | null = null;
     group.traverse((child) => {
       if (child instanceof THREE.Mesh && child.geometry) {
-        geo = child.geometry;
+        foundGeo = child.geometry;
       }
     });
 
-    if (!geo) return { geometry: null, offset: new THREE.Vector3() };
+    if (!foundGeo) return { geometry: null, offset: new THREE.Vector3() };
+
+    // Type assertion since TypeScript can't track the narrowing through the callback
+    const geo = foundGeo as THREE.BufferGeometry;
 
     // Compute bounding box to find the true visual center
     geo.computeBoundingBox();
@@ -95,20 +98,22 @@ function SceneContent({
   const prevObjData = useRef(objData);
   const pendingDistance = useRef(cameraDistance);
 
-  // Always update pending distance when totalDepth changes
-  pendingDistance.current = cameraDistance;
+  // Update pending distance and camera when objData or cameraDistance changes
+  useEffect(() => {
+    pendingDistance.current = cameraDistance;
 
-  // Only update camera when new model data arrives
-  if (prevObjData.current !== objData && objData !== null) {
-    // Update camera position to new distance while maintaining angle
-    const spherical = new THREE.Spherical();
-    spherical.setFromVector3(camera.position);
-    spherical.radius = pendingDistance.current;
-    const newPos = new THREE.Vector3().setFromSpherical(spherical);
-    camera.position.copy(newPos);
-    baseSpherical.current.radius = pendingDistance.current;
-    prevObjData.current = objData;
-  }
+    // Only update camera when new model data arrives
+    if (prevObjData.current !== objData && objData !== null) {
+      // Update camera position to new distance while maintaining angle
+      const spherical = new THREE.Spherical();
+      spherical.setFromVector3(camera.position);
+      spherical.radius = pendingDistance.current;
+      const newPos = new THREE.Vector3().setFromSpherical(spherical);
+      camera.position.copy(newPos);
+      baseSpherical.current.radius = pendingDistance.current;
+      prevObjData.current = objData;
+    }
+  }, [objData, cameraDistance, camera]);
 
   useFrame((_, delta) => {
     if (!controlsRef.current) return;
