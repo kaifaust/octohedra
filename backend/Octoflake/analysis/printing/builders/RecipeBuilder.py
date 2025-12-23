@@ -88,8 +88,8 @@ PRESET_RECIPES = {
         # Evil tower: tower with sub-towers branching in 4 directions at each level
         # Unlike flower, includes inwards so sub-branches can also branch back toward center
         "layers": [
-            {"depth": 3, "fill_depth": 0, "branches": True, "branch_directions": ["outwards", "inwards", "sideways", "upwards"]},
-            {"depth": 2, "fill_depth": 0, "branches": True, "branch_directions": ["outwards", "inwards", "sideways", "upwards"]},
+            {"depth": 3, "fill_depth": 0, "branch_directions": ["outwards", "inwards", "sideways", "upwards"]},
+            {"depth": 2, "fill_depth": 0, "branch_directions": ["outwards", "inwards", "sideways", "upwards"]},
             {"depth": 1, "fill_depth": 0},
         ],
         "depth_rules": [],
@@ -98,9 +98,9 @@ PRESET_RECIPES = {
         # Flower: tower with horizontal branches at each layer (matching FlowerTower)
         # Outwards + sideways + upwards, but NOT inwards (prevents back-branching toward center)
         "layers": [
-            {"depth": 4, "fill_depth": 0, "branches": True, "branch_directions": ["outwards", "sideways", "upwards"]},
-            {"depth": 3, "fill_depth": 0, "branches": True, "branch_directions": ["outwards", "sideways", "upwards"]},
-            {"depth": 2, "fill_depth": 0, "branches": True, "branch_directions": ["outwards", "sideways", "upwards"]},
+            {"depth": 4, "fill_depth": 0, "branch_directions": ["outwards", "sideways", "upwards"]},
+            {"depth": 3, "fill_depth": 0, "branch_directions": ["outwards", "sideways", "upwards"]},
+            {"depth": 2, "fill_depth": 0, "branch_directions": ["outwards", "sideways", "upwards"]},
             {"depth": 1, "fill_depth": 0},
         ],
         "depth_rules": [],
@@ -142,13 +142,12 @@ def get_preset_recipe(name: str, depth: int = 3, fill_depth: int = 0, stack_heig
         layers = []
         min_depth = max(1, depth - stack_height)
         for d in range(depth, min_depth - 1, -1):
-            has_branches = d > min_depth
             layer = {
                 "depth": d,
                 "fill_depth": fill_depth,
-                "branches": has_branches,
             }
-            if has_branches:
+            # All layers except the smallest get branches
+            if d > min_depth:
                 layer["branch_directions"] = ["outwards", "inwards", "sideways", "upwards"]
             layers.append(layer)
         return {"layers": layers, "depth_rules": []}
@@ -160,14 +159,12 @@ def get_preset_recipe(name: str, depth: int = 3, fill_depth: int = 0, stack_heig
         layers = []
         min_depth = max(1, depth - stack_height - 1)
         for d in range(depth, min_depth - 1, -1):
-            # All layers except the smallest get branches
-            has_branches = d > min_depth
             layer = {
                 "depth": d,
                 "fill_depth": fill_depth,
-                "branches": has_branches,
             }
-            if has_branches:
+            # All layers except the smallest get branches
+            if d > min_depth:
                 layer["branch_directions"] = ["outwards", "sideways", "upwards"]
             layers.append(layer)
         return {"layers": layers, "depth_rules": []}
@@ -300,8 +297,10 @@ class RecipeBuilder(OctoBuilder):
         for layer_idx, layer in enumerate(self.layers):
             layer_depth = layer.get("depth", 3)
             layer_fill = layer.get("fill_depth", 0)
-            has_branches = layer.get("branches", False)
             layer_rules = layer.get("depth_rules")  # Per-layer depth rules
+            # Branching is enabled if branch_directions is present and non-empty
+            layer_branch_dirs = layer.get("branch_directions")
+            has_branches = bool(layer_branch_dirs)
 
             # Calculate z position based on previous layer's attach_next_at
             if prev_layer is not None:
@@ -332,13 +331,6 @@ class RecipeBuilder(OctoBuilder):
                 # Get remaining layers for sub-structures
                 remaining_layers = self.layers[layer_idx + 1:]
                 if remaining_layers:
-                    # Get branch directions (semantic: outwards, inwards, sideways, upwards)
-                    layer_branch_dirs = layer.get("branch_directions")
-
-                    # Default directions if not specified
-                    if layer_branch_dirs is None:
-                        layer_branch_dirs = ["outwards", "sideways", "upwards"]
-
                     # Check if upwards is included (controls whether central stack continues)
                     include_upwards = "upwards" in layer_branch_dirs
 

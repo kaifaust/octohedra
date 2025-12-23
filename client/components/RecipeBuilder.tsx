@@ -2,11 +2,10 @@
 
 import { useCallback } from 'react';
 import { Plus, X, ChevronDown, ChevronUp, Copy } from 'lucide-react';
-import { Layer, DepthRule, NodeType, NODE_TYPES, BranchDirection, ALL_BRANCH_DIRECTIONS, BRANCH_DIRECTION_OPTIONS } from '@/lib/api';
+import { Layer, DepthRule, NodeType, NODE_TYPES, BranchDirection, BRANCH_DIRECTION_OPTIONS } from '@/lib/api';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
-import { Switch } from '@/components/ui/switch';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 
@@ -91,7 +90,6 @@ export function RecipeBuilder({
     const clonedLayer: Layer = {
       depth: layerToClone.depth,
       ...(layerToClone.attach_next_at !== undefined && { attach_next_at: layerToClone.attach_next_at }),
-      ...(layerToClone.branches !== undefined && { branches: layerToClone.branches }),
       ...(layerToClone.branch_directions && { branch_directions: [...layerToClone.branch_directions] }),
       ...(layerToClone.depth_rules && { depth_rules: layerToClone.depth_rules.map(r => ({ ...r })) }),
     };
@@ -225,7 +223,7 @@ export function RecipeBuilder({
                             if (value) setRuleForDepth(index, depth, value as NodeType);
                           }}
                           variant="outline"
-                          className="flex-1 justify-start gap-1"
+                          className="flex-1 justify-start"
                         >
                           {NODE_TYPES.map((nodeType) => (
                             <Tooltip key={nodeType.value}>
@@ -262,46 +260,33 @@ export function RecipeBuilder({
                 </div>
               </div>
 
-              {/* Branches toggle */}
+              {/* Branch directions */}
               <div className="space-y-2 pt-1 border-t border-border/30">
-                <div className="flex items-center gap-2 pt-2">
-                  <Switch
-                    checked={layer.branches ?? false}
-                    onCheckedChange={(checked) => updateLayer(index, { branches: checked })}
-                  />
-                  <Label className="text-xs">Branch to sub-layers</Label>
+                <div className="pt-2">
+                  <Label className="text-xs text-muted-foreground">Branch to sub-layers</Label>
                 </div>
-
-                  {/* Branch options - only show when branches enabled */}
-                  {layer.branches && (
-                    <div className="ml-6 space-y-1">
-                      {/* Direction toggles */}
-                      <ToggleGroup
-                        type="multiple"
-                        value={layer.branch_directions || ALL_BRANCH_DIRECTIONS}
-                        onValueChange={(value) => {
-                          if (value.length > 0) {
-                            updateLayer(index, { branch_directions: value as BranchDirection[] });
-                          }
-                        }}
-                        variant="outline"
-                        className="justify-start gap-1"
-                      >
-                        {BRANCH_DIRECTION_OPTIONS.map((opt) => (
-                          <ToggleGroupItem
-                            key={opt.value}
-                            value={opt.value}
-                            size="sm"
-                            className="text-xs px-2 h-6 data-[state=on]:bg-primary data-[state=on]:text-primary-foreground"
-                            title={opt.description}
-                          >
-                            {opt.label}
-                          </ToggleGroupItem>
-                        ))}
-                      </ToggleGroup>
-                    </div>
-                  )}
-                </div>
+                <ToggleGroup
+                  type="multiple"
+                  value={layer.branch_directions || []}
+                  onValueChange={(value) => {
+                    updateLayer(index, { branch_directions: value.length > 0 ? value as BranchDirection[] : undefined });
+                  }}
+                  variant="outline"
+                  className="justify-start"
+                >
+                  {BRANCH_DIRECTION_OPTIONS.map((opt) => (
+                    <ToggleGroupItem
+                      key={opt.value}
+                      value={opt.value}
+                      size="sm"
+                      className="text-xs px-2 h-6 data-[state=on]:bg-primary data-[state=on]:text-primary-foreground"
+                      title={opt.description}
+                    >
+                      {opt.label}
+                    </ToggleGroupItem>
+                  ))}
+                </ToggleGroup>
+              </div>
             </div>
           );
         })}

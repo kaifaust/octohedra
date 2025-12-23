@@ -36,10 +36,9 @@ class Layer(BaseModel):
         default=None, ge=1, le=5,
         description="Next layer attaches at this depth level (default: stack on top)"
     )
-    branches: bool = Field(default=False, description="Spawn sub-structures in horizontal directions")
     branch_directions: Optional[List[BranchDirection]] = Field(
         default=None,
-        description="Which directions to branch. Options: outwards, inwards, sideways, upwards"
+        description="Which directions to branch (empty/null = no branching). Options: outwards, inwards, sideways, upwards"
     )
     depth_rules: Optional[List[DepthRule]] = Field(
         default=None,
