@@ -51,13 +51,17 @@ export default function Home() {
 
   // Generate default fractal on page load
   useEffect(() => {
-    loadPreset('flake').then(() => {
-      generate({
-        preset: 'flake',
-        depth: 2,
-      });
+    fetchPresetRecipe('flake').then((recipe) => {
+      if (recipe) {
+        setLayers(recipe.layers);
+        setSixWay(recipe.six_way || false);
+        generate({
+          layers: recipe.layers,
+          six_way: recipe.six_way,
+        });
+      }
     });
-  }, [generate, loadPreset]);
+  }, [generate, fetchPresetRecipe]);
 
   // Handle preset selection - load and generate immediately
   const handlePresetSelect = useCallback(async (preset: PresetType) => {

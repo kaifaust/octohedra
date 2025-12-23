@@ -59,7 +59,7 @@ function FractalModel({ objData }: { objData: string }) {
 // Calculate camera distance based on total depth
 function calculateCameraDistance(totalDepth: number): number {
   // Base distance for depth 3 (single flake)
-  const baseDistance = 6;
+  const baseDistance = 12;
   // Linear scale: add distance for each depth unit above 3
   const additionalDistance = (totalDepth - 3) * 3;
   return baseDistance + additionalDistance;
