@@ -220,9 +220,11 @@ export function RecipeBuilder({
                 </Tooltip>
                 <ToggleGroup
                   type="multiple"
-                  value={layer.branch_directions || []}
+                  value={layer.branch_directions || ['upwards']}
                   onValueChange={(value) => {
-                    updateLayer(index, { branch_directions: value.length > 0 ? value as BranchDirection[] : undefined });
+                    // Require at least one selection - if empty, keep current value
+                    if (value.length === 0) return;
+                    updateLayer(index, { branch_directions: value as BranchDirection[] });
                   }}
                   variant="outline"
                   className="justify-start"
