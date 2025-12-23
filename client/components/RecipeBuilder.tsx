@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback } from 'react';
-import { Plus, X, ChevronDown, ChevronUp } from 'lucide-react';
+import { Plus, X, ChevronDown, ChevronUp, Copy } from 'lucide-react';
 import { Layer, DepthRule, NodeType, NODE_TYPES, BranchDirection, ALL_BRANCH_DIRECTIONS, BRANCH_DIRECTION_OPTIONS } from '@/lib/api';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -84,6 +84,22 @@ export function RecipeBuilder({
     onLayersChange(newLayers);
   }, [layers, onLayersChange]);
 
+  // Clone a layer (insert copy below)
+  const cloneLayer = useCallback((index: number) => {
+    const layerToClone = layers[index];
+    // Deep clone to avoid shared references
+    const clonedLayer: Layer = {
+      depth: layerToClone.depth,
+      ...(layerToClone.attach_next_at !== undefined && { attach_next_at: layerToClone.attach_next_at }),
+      ...(layerToClone.branches !== undefined && { branches: layerToClone.branches }),
+      ...(layerToClone.branch_directions && { branch_directions: [...layerToClone.branch_directions] }),
+      ...(layerToClone.depth_rules && { depth_rules: layerToClone.depth_rules.map(r => ({ ...r })) }),
+    };
+    const newLayers = [...layers];
+    newLayers.splice(index + 1, 0, clonedLayer);
+    onLayersChange(newLayers);
+  }, [layers, onLayersChange]);
+
   // Generate depth levels for a layer (from 1 up to layer.depth)
   const getDepthLevels = (layerDepth: number) =>
     Array.from({ length: layerDepth }, (_, i) => i + 1);
@@ -114,6 +130,15 @@ export function RecipeBuilder({
                   <span className="text-sm font-medium text-primary">Layer {index + 1}</span>
                 </div>
                 <div className="flex items-center gap-1">
+                  <Button
+                    variant="ghost"
+                    size="icon-sm"
+                    onClick={() => cloneLayer(index)}
+                    className="text-muted-foreground hover:text-foreground h-6 w-6"
+                    title="Clone layer"
+                  >
+                    <Copy className="h-3 w-3" />
+                  </Button>
                   {layers.length > 1 && (
                     <>
                       <Button
