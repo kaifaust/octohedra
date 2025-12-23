@@ -6,7 +6,6 @@ import { Layer, DepthRule, NodeType, NODE_TYPES, BranchDirection, ALL_BRANCH_DIR
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
-import { Slider } from '@/components/ui/slider';
 import { Switch } from '@/components/ui/switch';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
@@ -66,7 +65,7 @@ export function RecipeBuilder({
   const addLayer = useCallback(() => {
     const lastLayer = layers[layers.length - 1];
     const newDepth = Math.max(1, (lastLayer?.depth || 2) - 1);
-    onLayersChange([...layers, { depth: newDepth, fill_depth: 0 }]);
+    onLayersChange([...layers, { depth: newDepth }]);
   }, [layers, onLayersChange]);
 
   // Remove a layer
@@ -113,9 +112,6 @@ export function RecipeBuilder({
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   <span className="text-sm font-medium text-primary">Layer {index + 1}</span>
-                  <span className="text-xs text-muted-foreground">
-                    Depth {layer.depth}{layer.fill_depth > 0 ? `, Fill ${layer.fill_depth}` : ''}
-                  </span>
                 </div>
                 <div className="flex items-center gap-1">
                   {layers.length > 1 && (
@@ -151,33 +147,21 @@ export function RecipeBuilder({
                 </div>
               </div>
 
-              {/* Depth & Fill sliders side by side */}
-              <div className="grid grid-cols-2 gap-3">
-                <div className="space-y-1">
-                  <div className="flex items-center justify-between">
-                    <Label className="text-xs">Depth</Label>
-                    <span className="text-xs font-mono text-muted-foreground">{layer.depth}</span>
-                  </div>
-                  <Slider
-                    min={1}
-                    max={5}
-                    step={1}
-                    value={[layer.depth]}
-                    onValueChange={([value]) => updateLayer(index, { depth: value })}
-                  />
-                </div>
-                <div className="space-y-1">
-                  <div className="flex items-center justify-between">
-                    <Label className="text-xs">Fill</Label>
-                    <span className="text-xs font-mono text-muted-foreground">{layer.fill_depth}</span>
-                  </div>
-                  <Slider
-                    min={0}
-                    max={layer.depth}
-                    step={1}
-                    value={[layer.fill_depth]}
-                    onValueChange={([value]) => updateLayer(index, { fill_depth: value })}
-                  />
+              {/* Depth selector */}
+              <div className="flex items-center gap-2">
+                <Label className="text-xs">Depth</Label>
+                <div className="flex gap-1">
+                  {[1, 2, 3, 4, 5].map((d) => (
+                    <Button
+                      key={d}
+                      variant={layer.depth === d ? "default" : "outline"}
+                      size="sm"
+                      className="h-6 w-6 p-0 text-xs"
+                      onClick={() => updateLayer(index, { depth: d })}
+                    >
+                      {d}
+                    </Button>
+                  ))}
                 </div>
               </div>
 
