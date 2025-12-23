@@ -47,10 +47,11 @@ function FractalModel({ objData }: { objData: string }) {
   return (
     <mesh geometry={geometry}>
       <meshStandardMaterial
-        color="#4080ff"
-        metalness={0.3}
-        roughness={0.4}
+        color="#88ccff"
+        metalness={0.85}
+        roughness={0.15}
         side={THREE.DoubleSide}
+        envMapIntensity={1.2}
       />
     </mesh>
   );
@@ -147,11 +148,12 @@ function SceneContent({
 
   return (
     <>
-      <ambientLight intensity={0.5} />
-      <directionalLight position={[10, 10, 5]} intensity={1} />
+      <ambientLight intensity={0.2} />
+      <directionalLight position={[8, 20, 12]} intensity={1.0} />
+      <directionalLight position={[-6, 15, -8]} intensity={0.4} color="#ffd0a0" />
       <Suspense fallback={null}>
         {objData && <FractalModel objData={objData} />}
-        <Environment preset="studio" />
+        <Environment preset="sunset" background={false} />
       </Suspense>
       <TrackballControls
         ref={controlsRef}
