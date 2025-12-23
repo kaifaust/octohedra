@@ -2,6 +2,7 @@ from pathlib import Path
 
 from trimesh.exchange.export import export_mesh
 
+from printing.config import OUTPUT_DIR
 from printing.utils import OctoConfigs
 
 
@@ -32,8 +33,7 @@ def save_mesh(mesh,
               filename="derp",
               path=None,
               **filename_details):
-    default_path = Path.home() / "Desktop" / "shapes"
-    path = path if path is not None else default_path
+    path = path if path is not None else OUTPUT_DIR
     if not path.exists():
         path.mkdir()
     if filename_details:

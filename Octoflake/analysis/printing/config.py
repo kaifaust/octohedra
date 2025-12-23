@@ -1,0 +1,29 @@
+"""
+Output path configuration for the Octoflake project.
+
+Set the OCTOFLAKE_OUTPUT_DIR environment variable to customize output location,
+or it defaults to ./output/ relative to the analysis directory.
+"""
+import os
+from pathlib import Path
+
+
+def get_output_dir() -> Path:
+    """
+    Returns the output directory for generated files.
+
+    Priority:
+    1. OCTOFLAKE_OUTPUT_DIR environment variable
+    2. ./output/ relative to the analysis directory
+    """
+    if env_path := os.environ.get("OCTOFLAKE_OUTPUT_DIR"):
+        path = Path(env_path)
+    else:
+        # Default: output/ directory next to the printing package
+        path = Path(__file__).parent.parent / "output"
+
+    path.mkdir(parents=True, exist_ok=True)
+    return path
+
+
+OUTPUT_DIR = get_output_dir()

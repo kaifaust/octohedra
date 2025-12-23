@@ -2,6 +2,8 @@ import math
 
 import euclid3
 
+from printing.config import OUTPUT_DIR
+
 PREAMBLE = """
 
 
@@ -219,7 +221,7 @@ def make_square_spiral(x = 100, y= 100, n=10):
 
 
 def write_file(movements):
-    with open("out/raw.gcode", "w") as f:
+    with open(OUTPUT_DIR / "raw.gcode", "w") as f:
         f.write(PREAMBLE)
         f.write(PURGE)
         f.write(movements)

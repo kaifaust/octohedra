@@ -1,5 +1,6 @@
 from trimesh.exchange.export import export_mesh
 
+from printing.config import OUTPUT_DIR
 from printing.builders.FlakeBuilder import FlakeBuilder
 from printing.builders.OctoBuilder import OctoBuilder
 from printing.grid.OctoVector import OctoVector
@@ -84,7 +85,7 @@ def testing():
     mesh = Renderer().render(grid, config=config)
     config.print_settings()
 
-    filename = f"/users/Silver/Desktop/shapes/derp.obj"
+    filename = str(OUTPUT_DIR / "derp.obj")
 
     export_mesh(mesh, filename, include_normals=False)
 

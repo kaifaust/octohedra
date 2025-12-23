@@ -1,20 +1,19 @@
-from unittest import TestCase
+"""Tests for GridCell base class."""
+import pytest
 
 from printing.grid.GridCell import GridCell
+from printing.grid.OctoVector import OctoVector
 from printing.utils import OctoConfigs
-from printing.utils.OctoUtil import ORIGIN
-
-TEST_CONFIG = OctoConfigs.config_25
 
 
-class TestGridCell(TestCase):
-    def test_render(self):
-        cell = GridCell(ORIGIN)
-        # TODO: Put back a generic testing config
-        self.assertRaises(NotImplementedError, cell.render, TEST_CONFIG)
+class TestGridCell:
+    """Tests for GridCell rendering."""
 
+    def test_render_raises_not_implemented(self):
+        """GridCell.render() should raise NotImplementedError (abstract base)."""
+        cell = GridCell()
+        config = OctoConfigs.default.derive_render_config()
+        center = OctoVector(0, 0, 0)
 
-class Test(TestCase):
-    def test_stitch_belts(self):
-
-        self.fail()
+        with pytest.raises(NotImplementedError):
+            cell.render(config, center)

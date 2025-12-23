@@ -1,6 +1,4 @@
-from unittest import TestCase
+"""Tests for Move class.
 
-
-class TestMove(TestCase):
-    def test_render(self):
-        self.fail()
+TODO: Add actual tests once Move class behavior is understood.
+"""

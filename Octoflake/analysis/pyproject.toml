@@ -1,0 +1,55 @@
+[tool.poetry]
+name = "octoflake"
+version = "0.1.0"
+description = "Fractal geometry generator for 3D printing"
+authors = []
+packages = [{include = "printing"}]
+
+[tool.poetry.dependencies]
+python = "^3.11"
+numpy = "^2.0"
+scipy = "^1.11"
+matplotlib = "^3.8"
+trimesh = "^4.0"
+numpy-stl = "^3.1"
+networkx = "^3.2"
+euclid3 = "^0.1"
+imageio = "^2.30"
+
+[tool.poetry.group.dev.dependencies]
+pytest = "^8.0"
+pytest-cov = "^4.1"
+ruff = "^0.8"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
+
+[tool.pytest.ini_options]
+testpaths = ["printing/tests"]
+python_files = ["test_*.py"]
+python_functions = ["test_*"]
+addopts = "-v --tb=short"
+
+[tool.ruff]
+target-version = "py311"
+line-length = 100
+
+[tool.ruff.lint]
+select = [
+    "E",      # pycodestyle errors
+    "W",      # pycodestyle warnings
+    "F",      # pyflakes
+    "I",      # isort
+    "UP",     # pyupgrade
+]
+ignore = [
+    "E501",   # line too long (let formatter handle it)
+]
+
+[tool.ruff.lint.isort]
+known-first-party = ["printing"]
+
+[tool.coverage.run]
+source = ["printing"]
+omit = ["printing/tests/*"]
