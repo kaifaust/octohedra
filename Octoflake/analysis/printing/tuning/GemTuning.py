@@ -35,13 +35,13 @@ def gem_tuning():
     config = OctoConfig(
         name="Rainbow Mini 0.2",
         nozzle_width=0.2,
-        absolute_line_width=0.32, # (0.2 + .12) / 1.5
-        absolute_layer_height=0.12,
+        absolute_line_width=0.351, # (0.2 + .12) / 1.5
+        absolute_layer_height=0.15,
         line_overlap=1,
-        absolute_first_layer_height=.199,
+        absolute_first_layer_height=.1499,
         absolute_floor_height=.01,
         # absolute_layers_per_cell=9,
-        target_cell_width=2.5,
+        target_cell_width=3,
         absolute_slit=.01
     )
 
@@ -52,13 +52,13 @@ def gem_tuning():
 
     # for layer_count in (4, 8, 12, 16):
     #     config.absolute_layers_per_cell = layer_count
-    # FlowerTower(base_i=2).render(config,
-    #                   layers=config.layers_per_cell,
+    FlowerTower(base_i=2).render(config,
+                      # layers=config.layers_per_cell,
                       # overlap=overlap,
                       # width=config.line_width,
-                      # filename="Flower 2")
+                      filename="Flower 2")
 
-    # exit()
+    exit()
 
     # FlakeBuilder(5).render(config,filename="Flake")
 

@@ -52,13 +52,13 @@ def build_basic_temple_complex():
     config = OctoConfig(
         name="Rainbow Mini 0.2",
         nozzle_width=0.2,
-        absolute_line_width=0.4, # (0.2 + .12) / 1.5
+        absolute_line_width=0.351, # (0.2 + .12) / 1.5
         absolute_layer_height=0.15,
         line_overlap=1,
-        absolute_first_layer_height=.199,
+        absolute_first_layer_height=.1499,
         absolute_floor_height=.01,
-        # absolute_layers_per_cell=4,
-        target_cell_width=4,
+        # absolute_layers_per_cell=9,
+        target_cell_width=2.5,
         absolute_slit=.01
     )
 
@@ -66,7 +66,7 @@ def build_basic_temple_complex():
     # config.absolute_layers_per_cell = 12
     config.print_derived_values()
 
-    builder = TempleComplexBuilder(3, 1)
+    builder = TempleComplexBuilder(4, 1)
 
     builder.render(config)
 

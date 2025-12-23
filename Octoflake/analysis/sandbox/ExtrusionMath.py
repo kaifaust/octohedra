@@ -46,7 +46,7 @@ def achieve_target_ratio(nozzle_diameter, ratio):
     pass
 
 
-nd = 0.2
+nd = 0.3
 pi = math.pi
 
 # np.linspace

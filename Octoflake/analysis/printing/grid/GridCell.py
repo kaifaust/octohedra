@@ -80,8 +80,8 @@ def belts_to_trimesh(belts):
 
     mesh = Trimesh(points, faces, validate=True)
     mesh.remove_unreferenced_vertices()
-    mesh.remove_degenerate_faces()
-    mesh.remove_duplicate_faces()
+    # mesh.remove_degenerate_faces() # Was this deprecated?
+    # mesh.remove_duplicate_faces() # Was this deprecated?
 
     return mesh
 

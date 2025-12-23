@@ -5,7 +5,7 @@ from printing.builders.OctoBuilder import OctoBuilder
 from printing.grid.OctoVector import OctoVector
 # from printing.grid.Renderer import Renderer
 from printing.utils import OctoConfigs, RenderUtils
-from printing.utils.OctoConfigs import config_25
+# from printing.utils.OctoConfigs import config_25
 from printing.utils.OctoUtil import p2
 
 

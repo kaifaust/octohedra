@@ -1,5 +1,6 @@
 from dataclasses import dataclass
 
+
 from printing.builders.OctoBuilder import OctoBuilder
 from printing.grid.OctoGrid import OctoGrid
 from printing.grid.OctoVector import OctoVector
