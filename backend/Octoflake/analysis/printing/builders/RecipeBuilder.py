@@ -301,8 +301,12 @@ class RecipeBuilder(OctoBuilder):
                 if remaining_layers:
                     # Get branch directions: intersect layer's directions with allowed_dirs
                     layer_branch_dirs = layer.get("branch_directions")
+
+                    # Check if +z is included (controls whether central stack continues upward)
+                    include_z = True  # Default: continue building central stack
                     if layer_branch_dirs is not None:
-                        # Convert string directions to tuples
+                        include_z = "+z" in layer_branch_dirs
+                        # Convert string directions to tuples (only horizontal directions)
                         layer_dirs = self._parse_branch_directions(layer_branch_dirs)
                         # Intersect with allowed_dirs (what we're allowed based on where we came from)
                         if self.allowed_dirs is not None:
@@ -347,6 +351,10 @@ class RecipeBuilder(OctoBuilder):
                         )
                         sub_grid = sub_builder.materialize_additive()
                         combined_grid = OctoGrid.merge(combined_grid, sub_grid)
+
+                    # If +z is excluded, skip remaining layers at center
+                    if not include_z:
+                        break
 
             # Move up for next layer
             current_z += p2(layer_depth + 1)

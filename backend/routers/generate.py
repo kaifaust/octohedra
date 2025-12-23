@@ -15,7 +15,7 @@ NodeType = Literal["flake", "solid", "horizontal", "vertical"]
 PresetType = Literal["flake", "tower", "evil_tower", "flower"]
 
 # Branch directions
-BranchDirection = Literal["+x", "-x", "+y", "-y"]
+BranchDirection = Literal["+x", "-x", "+y", "-y", "+z"]
 
 
 class DepthRule(BaseModel):

@@ -261,19 +261,26 @@ export function RecipeBuilder({
                         >
                           {ALL_BRANCH_DIRECTIONS.map((dir) => {
                             const isSelected = (layer.branch_directions || ALL_BRANCH_DIRECTIONS).includes(dir);
+                            const tooltip = dir === '+z' ? 'Continue building central stack upward' : `Branch in ${dir} direction`;
                             return (
-                              <ToggleGroupItem
-                                key={dir}
-                                value={dir}
-                                size="sm"
-                                className={`font-mono text-xs px-2 h-6 ${
-                                  isSelected
-                                    ? 'bg-primary text-primary-foreground hover:bg-primary/90 hover:text-primary-foreground'
-                                    : ''
-                                }`}
-                              >
-                                {dir}
-                              </ToggleGroupItem>
+                              <Tooltip key={dir}>
+                                <TooltipTrigger asChild>
+                                  <ToggleGroupItem
+                                    value={dir}
+                                    size="sm"
+                                    className={`font-mono text-xs px-2 h-6 ${
+                                      isSelected
+                                        ? 'bg-primary text-primary-foreground hover:bg-primary/90 hover:text-primary-foreground'
+                                        : ''
+                                    }`}
+                                  >
+                                    {dir}
+                                  </ToggleGroupItem>
+                                </TooltipTrigger>
+                                <TooltipContent>
+                                  <p>{tooltip}</p>
+                                </TooltipContent>
+                              </Tooltip>
                             );
                           })}
                         </ToggleGroup>
