@@ -1,7 +1,7 @@
 'use client';
 
 import { Canvas, useFrame, useThree } from '@react-three/fiber';
-import { TrackballControls, Center, Environment } from '@react-three/drei';
+import { TrackballControls, Environment } from '@react-three/drei';
 import { OBJLoader } from 'three-stdlib';
 import { useMemo, Suspense, useRef } from 'react';
 import * as THREE from 'three';
@@ -14,33 +14,44 @@ interface FractalViewerProps {
 }
 
 function FractalModel({ objData }: { objData: string }) {
-  const geometry = useMemo(() => {
+  const { geometry, offset } = useMemo(() => {
     const loader = new OBJLoader();
     const group = loader.parse(objData);
 
-    let geometry: THREE.BufferGeometry | null = null;
+    let geo: THREE.BufferGeometry | null = null;
     group.traverse((child) => {
       if (child instanceof THREE.Mesh && child.geometry) {
-        geometry = child.geometry;
+        geo = child.geometry;
       }
     });
 
-    return geometry;
+    if (!geo) return { geometry: null, offset: new THREE.Vector3() };
+
+    // Compute bounding box to find the true visual center
+    geo.computeBoundingBox();
+    const box = geo.boundingBox!;
+
+    // Calculate the center of the bounding box
+    const center = new THREE.Vector3();
+    box.getCenter(center);
+
+    // Translate geometry so its bounding box center is at origin
+    geo.translate(-center.x, -center.y, -center.z);
+
+    return { geometry: geo, offset: center };
   }, [objData]);
 
   if (!geometry) return null;
 
   return (
-    <Center>
-      <mesh geometry={geometry}>
-        <meshStandardMaterial
-          color="#4080ff"
-          metalness={0.3}
-          roughness={0.4}
-          side={THREE.DoubleSide}
-        />
-      </mesh>
-    </Center>
+    <mesh geometry={geometry}>
+      <meshStandardMaterial
+        color="#4080ff"
+        metalness={0.3}
+        roughness={0.4}
+        side={THREE.DoubleSide}
+      />
+    </mesh>
   );
 }
 
