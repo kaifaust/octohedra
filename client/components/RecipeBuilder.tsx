@@ -1,7 +1,14 @@
 'use client';
 
 import { useCallback } from 'react';
+import { Plus, X, ChevronDown, ChevronUp } from 'lucide-react';
 import { Layer, DepthRule, NodeType, NODE_TYPES, BranchDirection, ALL_BRANCH_DIRECTIONS } from '@/lib/api';
+import { Button } from '@/components/ui/button';
+import { Label } from '@/components/ui/label';
+import { Slider } from '@/components/ui/slider';
+import { Switch } from '@/components/ui/switch';
+import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 
 interface RecipeBuilderProps {
   layers: Layer[];
@@ -16,9 +23,6 @@ export function RecipeBuilder({
   onLayersChange,
   onDepthRulesChange,
 }: RecipeBuilderProps) {
-  // Calculate max depth from layers
-  const maxDepth = Math.max(...layers.map(l => l.depth), 1);
-
   // Get the depth rule for a specific depth
   const getRuleForDepth = useCallback((depth: number): NodeType => {
     const rule = depthRules.find(r => r.depth === depth);
@@ -67,243 +71,225 @@ export function RecipeBuilder({
     onLayersChange(layers.filter((_, i) => i !== index));
   }, [layers, onLayersChange]);
 
-  // Generate depth levels from maxDepth down to 1
-  const depthLevels = Array.from({ length: maxDepth }, (_, i) => maxDepth - i);
+  // Move layer up/down
+  const moveLayer = useCallback((index: number, direction: 'up' | 'down') => {
+    const newIndex = direction === 'up' ? index - 1 : index + 1;
+    if (newIndex < 0 || newIndex >= layers.length) return;
+
+    const newLayers = [...layers];
+    [newLayers[index], newLayers[newIndex]] = [newLayers[newIndex], newLayers[index]];
+    onLayersChange(newLayers);
+  }, [layers, onLayersChange]);
+
+  // Generate depth levels for a layer (from layer.depth down to 1)
+  const getDepthLevels = (layerDepth: number) =>
+    Array.from({ length: layerDepth }, (_, i) => layerDepth - i);
 
   return (
-    <div className="space-y-4">
-      {/* Layers section */}
-      <div>
-        <div className="flex items-center justify-between mb-2">
-          <label className="text-sm font-medium">Layers</label>
-          <button
-            onClick={addLayer}
-            className="text-xs px-2 py-1 bg-purple-600 hover:bg-purple-700 rounded transition-colors"
-          >
-            + Add Layer
-          </button>
+    <div className="space-y-3">
+      {/* Header */}
+      <div className="flex items-center justify-between">
+        <div>
+          <Label className="text-base">Layers</Label>
+          <p className="text-xs text-muted-foreground">
+            Each layer is a fractal structure with its own rules
+          </p>
         </div>
-        <p className="text-xs text-gray-400 mb-2">
-          Stack flakes vertically (like Tower/Star)
-        </p>
+        <Button onClick={addLayer} size="sm" variant="secondary">
+          <Plus className="h-3 w-3 mr-1" />
+          Add
+        </Button>
+      </div>
 
-        <div className="space-y-2">
-          {layers.map((layer, index) => (
-            <div key={index} className="bg-gray-800/50 p-2 rounded">
-              <div className="flex items-center gap-2">
-                <span className="text-xs text-gray-500 w-4">{index + 1}</span>
+      {/* Layers */}
+      <div className="space-y-3">
+        {layers.map((layer, index) => {
+          const depthLevels = getDepthLevels(layer.depth);
 
-                <div className="flex-1 space-y-1">
-                  <div className="flex items-center gap-2">
-                    <label className="text-xs text-gray-400 w-12">Depth:</label>
-                    <input
-                      type="range"
-                      min={1}
-                      max={5}
-                      value={layer.depth}
-                      onChange={(e) => updateLayer(index, { depth: Number(e.target.value) })}
-                      className="flex-1"
-                    />
-                    <span className="text-xs w-4">{layer.depth}</span>
-                  </div>
-
-                  <div className="flex items-center gap-2">
-                    <label className="text-xs text-gray-400 w-12">Fill:</label>
-                    <input
-                      type="range"
-                      min={0}
-                      max={layer.depth}
-                      value={layer.fill_depth}
-                      onChange={(e) => updateLayer(index, { fill_depth: Number(e.target.value) })}
-                      className="flex-1"
-                    />
-                    <span className="text-xs w-4">{layer.fill_depth}</span>
-                  </div>
-
-                  {/* Branches toggle - only show if there are more layers below */}
-                  {index < layers.length - 1 && (
+          return (
+            <div key={index} className="bg-muted/50 p-3 rounded-lg border border-border/50 space-y-3">
+              {/* Layer header */}
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <span className="text-sm font-medium text-primary">Layer {index + 1}</span>
+                  <span className="text-xs text-muted-foreground">
+                    Depth {layer.depth}{layer.fill_depth > 0 ? `, Fill ${layer.fill_depth}` : ''}
+                  </span>
+                </div>
+                <div className="flex items-center gap-1">
+                  {layers.length > 1 && (
                     <>
-                      <div className="flex items-center gap-2">
-                        <label className="text-xs text-gray-400 w-12">Branch:</label>
-                        <button
-                          onClick={() => updateLayer(index, { branches: !layer.branches })}
-                          className={`px-2 py-0.5 text-xs rounded transition-colors ${
-                            layer.branches
-                              ? 'bg-purple-600 text-white'
-                              : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
-                          }`}
-                          title="Spawn sub-structures in horizontal directions"
-                        >
-                          {layer.branches ? 'On' : 'Off'}
-                        </button>
-                        <span className="text-xs text-gray-500">Spawn horizontal sub-towers</span>
-                      </div>
-
-                      {/* Branch options - only show when branches enabled */}
-                      {layer.branches && (
-                        <>
-                          {/* Direction toggles */}
-                          <div className="flex items-center gap-2 ml-4">
-                            <label className="text-xs text-gray-400 w-8">Dirs:</label>
-                            <div className="flex gap-1">
-                              {ALL_BRANCH_DIRECTIONS.map((dir) => {
-                                const currentDirs = layer.branch_directions || ALL_BRANCH_DIRECTIONS;
-                                const isActive = currentDirs.includes(dir);
-                                return (
-                                  <button
-                                    key={dir}
-                                    onClick={() => {
-                                      let newDirs: BranchDirection[];
-                                      if (isActive) {
-                                        // Remove direction (but keep at least one)
-                                        newDirs = currentDirs.filter(d => d !== dir);
-                                        if (newDirs.length === 0) newDirs = [dir];
-                                      } else {
-                                        // Add direction
-                                        newDirs = [...currentDirs, dir];
-                                      }
-                                      updateLayer(index, { branch_directions: newDirs });
-                                    }}
-                                    className={`px-1.5 py-0.5 text-xs rounded font-mono transition-colors ${
-                                      isActive
-                                        ? 'bg-green-600 text-white'
-                                        : 'bg-gray-700 text-gray-400 hover:bg-gray-600'
-                                    }`}
-                                    title={`Branch in ${dir} direction`}
-                                  >
-                                    {dir}
-                                  </button>
-                                );
-                              })}
-                            </div>
-                          </div>
-
-                          {/* Exclude origin toggle */}
-                          <div className="flex items-center gap-2 ml-4">
-                            <label className="text-xs text-gray-400 w-8">Orbit:</label>
-                            <button
-                              onClick={() => updateLayer(index, {
-                                branch_exclude_origin: layer.branch_exclude_origin === false
-                              })}
-                              className={`px-2 py-0.5 text-xs rounded transition-colors ${
-                                layer.branch_exclude_origin !== false
-                                  ? 'bg-green-600 text-white'
-                                  : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
-                              }`}
-                              title="Symmetric orbiting: each sub-branch can't branch back toward its parent"
-                            >
-                              {layer.branch_exclude_origin !== false ? 'On' : 'Off'}
-                            </button>
-                            <span className="text-xs text-gray-500">
-                              {layer.branch_exclude_origin !== false
-                                ? 'Symmetric (no back-branching)'
-                                : 'Asymmetric (can overlap)'}
-                            </span>
-                          </div>
-                        </>
-                      )}
+                      <Button
+                        variant="ghost"
+                        size="icon-sm"
+                        onClick={() => moveLayer(index, 'up')}
+                        disabled={index === 0}
+                        className="text-muted-foreground hover:text-foreground h-6 w-6"
+                      >
+                        <ChevronUp className="h-3 w-3" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon-sm"
+                        onClick={() => moveLayer(index, 'down')}
+                        disabled={index === layers.length - 1}
+                        className="text-muted-foreground hover:text-foreground h-6 w-6"
+                      >
+                        <ChevronDown className="h-3 w-3" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon-sm"
+                        onClick={() => removeLayer(index)}
+                        className="text-muted-foreground hover:text-destructive h-6 w-6"
+                      >
+                        <X className="h-3 w-3" />
+                      </Button>
                     </>
                   )}
                 </div>
-
-                {layers.length > 1 && (
-                  <button
-                    onClick={() => removeLayer(index)}
-                    className="text-gray-500 hover:text-red-400 transition-colors self-start mt-1"
-                    title="Remove layer"
-                  >
-                    ×
-                  </button>
-                )}
               </div>
-            </div>
-          ))}
-        </div>
-      </div>
 
-      {/* Depth rules section */}
-      <div>
-        <label className="block text-sm font-medium mb-2">Depth Rules</label>
-        <p className="text-xs text-gray-400 mb-3">
-          Modify branching behavior at each depth level
-        </p>
-
-        <div className="space-y-2">
-          {depthLevels.map((depth) => {
-            const currentType = getRuleForDepth(depth);
-            const isDefault = currentType === 'flake';
-
-            return (
-              <div key={depth} className="flex items-center gap-2">
-                <span className={`w-6 text-center text-sm font-mono ${
-                  isDefault ? 'text-gray-500' : 'text-purple-400'
-                }`}>
-                  {depth}
-                </span>
-                <div className="flex-1 flex gap-1 flex-wrap">
-                  {NODE_TYPES.map((nodeType) => (
-                    <button
-                      key={nodeType.value}
-                      onClick={() => setRuleForDepth(depth, nodeType.value)}
-                      className={`px-2 py-1 text-xs rounded transition-colors ${
-                        currentType === nodeType.value
-                          ? nodeType.value === 'flake'
-                            ? 'bg-gray-600 text-white'
-                            : 'bg-purple-600 text-white'
-                          : 'bg-gray-800 hover:bg-gray-700 text-gray-300'
-                      }`}
-                      title={nodeType.description}
-                    >
-                      {nodeType.label}
-                    </button>
-                  ))}
+              {/* Depth & Fill sliders side by side */}
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1">
+                  <div className="flex items-center justify-between">
+                    <Label className="text-xs">Depth</Label>
+                    <span className="text-xs font-mono text-muted-foreground">{layer.depth}</span>
+                  </div>
+                  <Slider
+                    min={1}
+                    max={5}
+                    step={1}
+                    value={[layer.depth]}
+                    onValueChange={([value]) => updateLayer(index, { depth: value })}
+                  />
+                </div>
+                <div className="space-y-1">
+                  <div className="flex items-center justify-between">
+                    <Label className="text-xs">Fill</Label>
+                    <span className="text-xs font-mono text-muted-foreground">{layer.fill_depth}</span>
+                  </div>
+                  <Slider
+                    min={0}
+                    max={layer.depth}
+                    step={1}
+                    value={[layer.fill_depth]}
+                    onValueChange={([value]) => updateLayer(index, { fill_depth: value })}
+                  />
                 </div>
               </div>
-            );
-          })}
-        </div>
-      </div>
 
-      {/* Summary */}
-      {(layers.length > 1 || depthRules.length > 0 || layers.some(l => l.branches)) && (
-        <div className="text-xs text-gray-400 bg-gray-800/50 p-2 rounded space-y-1">
-          {layers.length > 1 && (
-            <div>
-              <span className="font-medium text-gray-300">Layers:</span>{' '}
-              {layers.map((l, i) => (
-                <span key={i}>
-                  {i > 0 && ' → '}
-                  <span className="text-purple-400">D{l.depth}</span>
-                  {l.fill_depth > 0 && <span className="text-gray-500">(fill:{l.fill_depth})</span>}
-                  {l.branches && <span className="text-green-400">*</span>}
-                </span>
-              ))}
-              {layers.some(l => l.branches) && (
-                <span className="text-gray-500 ml-1">(*=branches)</span>
+              {/* Depth rules for this layer */}
+              <div className="space-y-2">
+                <Label className="text-xs text-muted-foreground">Node Types by Depth</Label>
+                <div className="space-y-1.5">
+                  {depthLevels.map((depth) => {
+                    const currentType = getRuleForDepth(depth);
+                    const isDefault = currentType === 'flake';
+
+                    return (
+                      <div key={depth} className="flex items-center gap-2">
+                        <span className={`w-5 text-center text-xs font-mono ${
+                          isDefault ? 'text-muted-foreground' : 'text-primary'
+                        }`}>
+                          {depth}
+                        </span>
+                        <ToggleGroup
+                          type="single"
+                          value={currentType}
+                          onValueChange={(value) => {
+                            if (value) setRuleForDepth(depth, value as NodeType);
+                          }}
+                          className="flex-1 justify-start gap-1"
+                        >
+                          {NODE_TYPES.map((nodeType) => (
+                            <Tooltip key={nodeType.value}>
+                              <TooltipTrigger asChild>
+                                <ToggleGroupItem
+                                  value={nodeType.value}
+                                  size="sm"
+                                  className="text-xs h-6 px-2"
+                                >
+                                  {nodeType.label}
+                                </ToggleGroupItem>
+                              </TooltipTrigger>
+                              <TooltipContent>
+                                <p>{nodeType.description}</p>
+                              </TooltipContent>
+                            </Tooltip>
+                          ))}
+                        </ToggleGroup>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Branches toggle - only show if there are more layers below */}
+              {index < layers.length - 1 && (
+                <div className="space-y-2 pt-1 border-t border-border/30">
+                  <div className="flex items-center gap-2 pt-2">
+                    <Switch
+                      checked={layer.branches ?? false}
+                      onCheckedChange={(checked) => updateLayer(index, { branches: checked })}
+                    />
+                    <Label className="text-xs">Branch to sub-layers</Label>
+                  </div>
+
+                  {/* Branch options - only show when branches enabled */}
+                  {layer.branches && (
+                    <div className="ml-6 space-y-2">
+                      {/* Direction toggles */}
+                      <div className="space-y-1">
+                        <Label className="text-xs text-muted-foreground">Directions</Label>
+                        <ToggleGroup
+                          type="multiple"
+                          value={layer.branch_directions || ALL_BRANCH_DIRECTIONS}
+                          onValueChange={(value) => {
+                            if (value.length > 0) {
+                              updateLayer(index, { branch_directions: value as BranchDirection[] });
+                            }
+                          }}
+                          className="justify-start gap-1"
+                        >
+                          {ALL_BRANCH_DIRECTIONS.map((dir) => (
+                            <ToggleGroupItem
+                              key={dir}
+                              value={dir}
+                              size="sm"
+                              className="font-mono text-xs px-2 h-6"
+                            >
+                              {dir}
+                            </ToggleGroupItem>
+                          ))}
+                        </ToggleGroup>
+                      </div>
+
+                      {/* Orbit toggle */}
+                      <div className="flex items-center gap-2">
+                        <Switch
+                          checked={layer.branch_exclude_origin !== false}
+                          onCheckedChange={(checked) => updateLayer(index, { branch_exclude_origin: checked })}
+                        />
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Label className="text-xs cursor-help">
+                              Orbit mode
+                            </Label>
+                          </TooltipTrigger>
+                          <TooltipContent>
+                            <p>Sub-branches can&apos;t branch back toward parent</p>
+                          </TooltipContent>
+                        </Tooltip>
+                      </div>
+                    </div>
+                  )}
+                </div>
               )}
             </div>
-          )}
-          {depthRules.length > 0 && (
-            <div>
-              <span className="font-medium text-gray-300">Rules:</span>{' '}
-              {depthRules.map((rule, i) => (
-                <span key={rule.depth}>
-                  {i > 0 && ', '}
-                  <span className="text-purple-400">D{rule.depth}</span>→{rule.type}
-                </span>
-              ))}
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* Help text */}
-      <div className="text-xs text-gray-500 space-y-1">
-        <p><strong>Fractal:</strong> Standard 6-way branching</p>
-        <p><strong>Solid:</strong> Fill solid, stop recursion</p>
-        <p><strong>Flat:</strong> Horizontal only (disc layers)</p>
-        <p><strong>Spire:</strong> Vertical only (columns)</p>
-        <p><strong>Skip:</strong> Skip this level, continue deeper</p>
+          );
+        })}
       </div>
     </div>
   );

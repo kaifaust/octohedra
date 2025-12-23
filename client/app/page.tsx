@@ -1,10 +1,17 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
+import { RotateCw } from 'lucide-react';
 import { FractalViewer } from '@/components/FractalViewer';
 import { RecipeBuilder } from '@/components/RecipeBuilder';
 import { useFractalGeneration } from '@/hooks/useFractalGeneration';
 import { PresetType, Layer, DepthRule, PRESETS } from '@/lib/api';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Separator } from '@/components/ui/separator';
+import { Toggle } from '@/components/ui/toggle';
+import { Label } from '@/components/ui/label';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 
 export default function Home() {
   // Current preset (for the selector)
@@ -84,80 +91,85 @@ export default function Home() {
     <main className="relative w-full h-dvh overflow-hidden">
       <FractalViewer objData={objData} depth={maxDepth} autoRotate={autoRotate} />
 
-      <div className="absolute top-4 left-4 w-80 max-h-[calc(100dvh-2rem)] overflow-y-auto p-4 bg-gray-900/80 backdrop-blur-sm rounded-lg text-white space-y-4">
-        <div className="flex items-center justify-between">
-          <h1 className="text-xl font-bold">Octoflake</h1>
-          <button
-            onClick={() => setAutoRotate(!autoRotate)}
-            className={`px-2 py-1 text-xs rounded transition-colors ${
-              autoRotate
-                ? 'bg-purple-600 text-white'
-                : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
-            }`}
-            title={autoRotate ? 'Stop animation' : 'Start animation'}
-          >
-            {autoRotate ? '⟳ Animating' : '⟳ Animate'}
-          </button>
-        </div>
-
-        {/* Preset selector */}
-        <div>
-          <label className="block text-sm font-medium mb-2">Start from Preset</label>
-          <div className="grid grid-cols-2 gap-1">
-            {PRESETS.map((preset) => (
-              <button
-                key={preset.value}
-                onClick={() => handlePresetSelect(preset.value)}
-                className={`px-2 py-1.5 text-xs rounded transition-colors ${
-                  selectedPreset === preset.value && !isModified
-                    ? 'bg-blue-600 text-white'
-                    : 'bg-gray-700 hover:bg-gray-600 text-gray-200'
-                }`}
-                title={preset.description}
-              >
-                {preset.label}
-              </button>
-            ))}
+      <Card className="absolute top-4 left-4 w-96 max-h-[calc(100dvh-2rem)] overflow-y-auto border-border/50 bg-card/80 backdrop-blur-sm">
+        <CardHeader className="pb-2">
+          <div className="flex items-center justify-between">
+            <CardTitle className="text-xl">Octoflake</CardTitle>
+            <Toggle
+              pressed={autoRotate}
+              onPressedChange={setAutoRotate}
+              size="sm"
+              aria-label="Toggle animation"
+            >
+              <RotateCw className={`h-4 w-4 ${autoRotate ? 'animate-spin' : ''}`} />
+              <span className="ml-1">{autoRotate ? 'Animating' : 'Animate'}</span>
+            </Toggle>
           </div>
-          {isModified && (
-            <p className="text-xs text-purple-400 mt-1">Recipe modified from preset</p>
+        </CardHeader>
+
+        <CardContent className="space-y-4">
+          {/* Preset selector */}
+          <div className="space-y-2">
+            <Label>Start from Preset</Label>
+            <div className="grid grid-cols-2 gap-1">
+              {PRESETS.map((preset) => (
+                <Tooltip key={preset.value}>
+                  <TooltipTrigger asChild>
+                    <Button
+                      variant={selectedPreset === preset.value && !isModified ? 'default' : 'secondary'}
+                      size="sm"
+                      onClick={() => handlePresetSelect(preset.value)}
+                      className="w-full text-xs"
+                    >
+                      {preset.label}
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <p>{preset.description}</p>
+                  </TooltipContent>
+                </Tooltip>
+              ))}
+            </div>
+            {isModified && (
+              <p className="text-xs text-primary">Recipe modified from preset</p>
+            )}
+          </div>
+
+          <Separator />
+
+          {/* Recipe builder */}
+          <RecipeBuilder
+            layers={layers}
+            depthRules={depthRules}
+            onLayersChange={handleLayersChange}
+            onDepthRulesChange={handleDepthRulesChange}
+          />
+
+          {/* Generate button */}
+          <Button
+            onClick={handleGenerate}
+            disabled={isLoading}
+            className="w-full"
+            size="lg"
+          >
+            {isLoading ? 'Generating...' : 'Generate'}
+          </Button>
+
+          {/* Error display */}
+          {error && (
+            <p className="text-destructive text-xs bg-destructive/10 p-2 rounded-md">
+              {error.message}
+            </p>
           )}
-        </div>
 
-        {/* Divider */}
-        <div className="border-t border-gray-700" />
-
-        {/* Recipe builder */}
-        <RecipeBuilder
-          layers={layers}
-          depthRules={depthRules}
-          onLayersChange={handleLayersChange}
-          onDepthRulesChange={handleDepthRulesChange}
-        />
-
-        {/* Generate button */}
-        <button
-          onClick={handleGenerate}
-          disabled={isLoading}
-          className="w-full py-2 rounded font-semibold transition-colors bg-purple-600 hover:bg-purple-700 disabled:bg-gray-600 disabled:cursor-not-allowed"
-        >
-          {isLoading ? 'Generating...' : 'Generate'}
-        </button>
-
-        {/* Error display */}
-        {error && (
-          <p className="text-red-400 text-xs bg-red-900/30 p-2 rounded">
-            {error.message}
-          </p>
-        )}
-
-        {/* Success indicator */}
-        {objData && (
-          <p className="text-green-400 text-xs">
-            {Math.round(objData.length / 1024)}KB loaded
-          </p>
-        )}
-      </div>
+          {/* Success indicator */}
+          {objData && (
+            <p className="text-muted-foreground text-xs">
+              {Math.round(objData.length / 1024)}KB loaded
+            </p>
+          )}
+        </CardContent>
+      </Card>
     </main>
   );
 }
