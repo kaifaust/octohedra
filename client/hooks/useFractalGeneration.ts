@@ -1,5 +1,5 @@
 import { useState, useCallback } from 'react';
-import { generateFractal, GenerateParams } from '@/lib/api';
+import { generateFractal, getPresetRecipe, GenerateParams, Recipe, PresetType } from '@/lib/api';
 
 export function useFractalGeneration() {
   const [objData, setObjData] = useState<string | null>(null);
@@ -20,5 +20,19 @@ export function useFractalGeneration() {
     }
   }, []);
 
-  return { objData, isLoading, error, generate };
+  const fetchPresetRecipe = useCallback(async (
+    preset: PresetType,
+    depth: number = 3,
+    fillDepth: number = 0,
+    stackHeight: number = 1
+  ): Promise<Recipe | null> => {
+    try {
+      return await getPresetRecipe(preset, depth, fillDepth, stackHeight);
+    } catch (e) {
+      setError(e instanceof Error ? e : new Error('Unknown error'));
+      return null;
+    }
+  }, []);
+
+  return { objData, isLoading, error, generate, fetchPresetRecipe };
 }

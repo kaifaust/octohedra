@@ -8,6 +8,7 @@ import * as THREE from 'three';
 
 interface FractalViewerProps {
   objData: string | null;
+  depth?: number;
 }
 
 function FractalModel({ objData }: { objData: string }) {
@@ -41,7 +42,7 @@ function FractalModel({ objData }: { objData: string }) {
   );
 }
 
-export function FractalViewer({ objData }: FractalViewerProps) {
+export function FractalViewer({ objData, depth = 2 }: FractalViewerProps) {
   return (
     <div className="w-full h-dvh bg-gray-950">
       <Canvas camera={{ position: [0, 5, 70], fov: 45 }}>
