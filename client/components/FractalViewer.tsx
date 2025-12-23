@@ -1,11 +1,11 @@
 'use client';
 
 import { Canvas, useFrame, useThree } from '@react-three/fiber';
-import { OrbitControls, Center, Environment } from '@react-three/drei';
+import { TrackballControls, Center, Environment } from '@react-three/drei';
 import { OBJLoader } from 'three-stdlib';
-import { useMemo, Suspense, useRef, useEffect } from 'react';
+import { useMemo, Suspense, useRef } from 'react';
 import * as THREE from 'three';
-import type { OrbitControls as OrbitControlsType } from 'three-stdlib';
+import type { TrackballControls as TrackballControlsType } from 'three-stdlib';
 
 interface FractalViewerProps {
   objData: string | null;
@@ -53,7 +53,7 @@ function SceneContent({
   autoRotate: boolean;
 }) {
   const { camera } = useThree();
-  const controlsRef = useRef<OrbitControlsType>(null);
+  const controlsRef = useRef<TrackballControlsType>(null);
   const timeRef = useRef(0);
   const wasAutoRotating = useRef(false);
 
@@ -106,11 +106,14 @@ function SceneContent({
         {objData && <FractalModel objData={objData} />}
         <Environment preset="studio" />
       </Suspense>
-      <OrbitControls
+      <TrackballControls
         ref={controlsRef}
-        enablePan={true}
-        enableZoom={true}
-        enableRotate={true}
+        noPan={false}
+        noZoom={false}
+        noRotate={false}
+        rotateSpeed={2}
+        zoomSpeed={1.2}
+        panSpeed={0.8}
       />
     </>
   );
