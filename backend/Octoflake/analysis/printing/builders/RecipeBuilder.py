@@ -74,15 +74,6 @@ PRESET_RECIPES = {
         "layers": [{"depth": 3, "fill_depth": 0}],
         "depth_rules": [],
     },
-    "star": {
-        # Star: main flake + smaller flakes stacked on top (matching StarBuilder)
-        # With iteration=3 and length=1: flake at 3, then 2
-        "layers": [
-            {"depth": 3, "fill_depth": 0},
-            {"depth": 2, "fill_depth": 0},
-        ],
-        "depth_rules": [],
-    },
     "tower": {
         # Tower: decreasing flakes stacked vertically (matching Tower builder)
         # With base_i=3, min_iteration=1: flakes at 3, 2, 1
@@ -93,12 +84,13 @@ PRESET_RECIPES = {
         ],
         "depth_rules": [],
     },
-    "hollow_tower": {
-        # Hollow tower: each layer has fill_depth matching its depth (matching HollowTower)
+    "evil_tower": {
+        # Evil tower: tower with sub-towers branching in 4 directions at each level
+        # Unlike flower, each sub-branch is a full tower, not recursive
         "layers": [
-            {"depth": 3, "fill_depth": 3},
-            {"depth": 2, "fill_depth": 2},
-            {"depth": 1, "fill_depth": 1},
+            {"depth": 3, "fill_depth": 0, "branches": True, "branch_directions": ["+x", "-x", "+y", "-y"], "branch_exclude_origin": False},
+            {"depth": 2, "fill_depth": 0, "branches": True, "branch_directions": ["+x", "-x", "+y", "-y"], "branch_exclude_origin": False},
+            {"depth": 1, "fill_depth": 0},
         ],
         "depth_rules": [],
     },
@@ -112,20 +104,6 @@ PRESET_RECIPES = {
             {"depth": 1, "fill_depth": 0},
         ],
         "depth_rules": [],
-    },
-    "spire": {
-        # Spire: flake with vertical branching creating columns
-        "layers": [{"depth": 3, "fill_depth": 0}],
-        "depth_rules": [
-            {"depth": 2, "type": "vertical"},
-        ],
-    },
-    "solid_core": {
-        # Solid core: fractal exterior with solid interior
-        "layers": [{"depth": 3, "fill_depth": 0}],
-        "depth_rules": [
-            {"depth": 1, "type": "solid"},
-        ],
     },
 }
 
@@ -148,17 +126,6 @@ def get_preset_recipe(name: str, depth: int = 3, fill_depth: int = 0, stack_heig
             "depth_rules": [],
         }
 
-    elif name == "star":
-        # Star: main flake + stack_height smaller flakes on top
-        # Matches StarBuilder(iteration=depth, length=stack_height)
-        layers = [{"depth": depth, "fill_depth": 0}]
-        current_depth = depth - 1
-        for _ in range(stack_height):
-            if current_depth >= 1:
-                layers.append({"depth": current_depth, "fill_depth": 0})
-                current_depth -= 1
-        return {"layers": layers, "depth_rules": []}
-
     elif name == "tower":
         # Tower: flakes from depth down to (depth - stack_height)
         # Matches Tower(base_i=depth, min_iteration=depth-stack_height)
@@ -168,13 +135,23 @@ def get_preset_recipe(name: str, depth: int = 3, fill_depth: int = 0, stack_heig
             layers.append({"depth": d, "fill_depth": fill_depth})
         return {"layers": layers, "depth_rules": []}
 
-    elif name == "hollow_tower":
-        # Hollow tower: each layer has fill matching its depth
-        # Matches HollowTower(iteration=depth, min_iteration=depth-stack_height)
+    elif name == "evil_tower":
+        # Evil tower: tower with sub-towers branching in 4 directions at each level
+        # Matches EvilTower(base_i=depth, min_i=1)
+        # Unlike flower, branch_exclude_origin=False so all 4 directions spawn
         layers = []
         min_depth = max(1, depth - stack_height)
         for d in range(depth, min_depth - 1, -1):
-            layers.append({"depth": d, "fill_depth": d})
+            has_branches = d > min_depth
+            layer = {
+                "depth": d,
+                "fill_depth": fill_depth,
+                "branches": has_branches,
+            }
+            if has_branches:
+                layer["branch_directions"] = ["+x", "-x", "+y", "-y"]
+                layer["branch_exclude_origin"] = False  # All 4 directions spawn towers
+            layers.append(layer)
         return {"layers": layers, "depth_rules": []}
 
     elif name == "flower":
@@ -196,18 +173,6 @@ def get_preset_recipe(name: str, depth: int = 3, fill_depth: int = 0, stack_heig
                 layer["branch_exclude_origin"] = True
             layers.append(layer)
         return {"layers": layers, "depth_rules": []}
-
-    elif name == "spire":
-        return {
-            "layers": [{"depth": depth, "fill_depth": fill_depth}],
-            "depth_rules": [{"depth": max(1, depth - 1), "type": "vertical"}],
-        }
-
-    elif name == "solid_core":
-        return {
-            "layers": [{"depth": depth, "fill_depth": 0}],
-            "depth_rules": [{"depth": 1, "type": "solid"}],
-        }
 
     # Fallback
     return {

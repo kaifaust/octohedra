@@ -9,8 +9,9 @@ import type { TrackballControls as TrackballControlsType } from 'three-stdlib';
 
 interface FractalViewerProps {
   objData: string | null;
-  depth?: number;
+  totalDepth?: number; // Sum of all layer depths for zoom calculation
   autoRotate?: boolean;
+  onAutoRotateChange?: (autoRotate: boolean) => void;
 }
 
 function FractalModel({ objData }: { objData: string }) {
@@ -55,13 +56,26 @@ function FractalModel({ objData }: { objData: string }) {
   );
 }
 
+// Calculate camera distance based on total depth
+function calculateCameraDistance(totalDepth: number): number {
+  // Base distance for depth 3 (single flake)
+  const baseDistance = 6;
+  // Linear scale: add distance for each depth unit above 3
+  const additionalDistance = (totalDepth - 3) * 3;
+  return baseDistance + additionalDistance;
+}
+
 // Scene content with orbit animation
 function SceneContent({
   objData,
-  autoRotate
+  autoRotate,
+  onAutoRotateChange,
+  totalDepth
 }: {
   objData: string | null;
   autoRotate: boolean;
+  onAutoRotateChange?: (autoRotate: boolean) => void;
+  totalDepth: number;
 }) {
   const { camera } = useThree();
   const controlsRef = useRef<TrackballControlsType>(null);
@@ -71,8 +85,30 @@ function SceneContent({
   // Animation parameters
   const orbitSpeed = 2.4; // Speed of the orbit (radians per second)
 
+  // Calculate camera distance based on total depth
+  const cameraDistance = calculateCameraDistance(totalDepth);
+
   // Store the base spherical coordinates (captured from current camera position)
-  const baseSpherical = useRef(new THREE.Spherical(70, Math.PI / 2.2, 0));
+  const baseSpherical = useRef(new THREE.Spherical(cameraDistance, Math.PI / 2, 0));
+
+  // Track previous objData to detect when new model renders
+  const prevObjData = useRef(objData);
+  const pendingDistance = useRef(cameraDistance);
+
+  // Always update pending distance when totalDepth changes
+  pendingDistance.current = cameraDistance;
+
+  // Only update camera when new model data arrives
+  if (prevObjData.current !== objData && objData !== null) {
+    // Update camera position to new distance while maintaining angle
+    const spherical = new THREE.Spherical();
+    spherical.setFromVector3(camera.position);
+    spherical.radius = pendingDistance.current;
+    const newPos = new THREE.Vector3().setFromSpherical(spherical);
+    camera.position.copy(newPos);
+    baseSpherical.current.radius = pendingDistance.current;
+    prevObjData.current = objData;
+  }
 
   useFrame((_, delta) => {
     if (!controlsRef.current) return;
@@ -94,7 +130,7 @@ function SceneContent({
     const thetaOffset = Math.sin(timeRef.current) * 0.4; // Azimuthal wobble (left/right)
     const phiOffset = Math.cos(timeRef.current) * 0.25; // Polar wobble (up/down)
 
-    // Apply to camera position using spherical coordinates
+    // Apply to camera position using spherical coordinates (use current radius, not pending)
     const spherical = new THREE.Spherical(
       baseSpherical.current.radius,
       baseSpherical.current.phi + phiOffset,
@@ -125,16 +161,23 @@ function SceneContent({
         rotateSpeed={2}
         zoomSpeed={1.2}
         panSpeed={0.8}
+        onStart={() => {
+          if (autoRotate && onAutoRotateChange) {
+            onAutoRotateChange(false);
+          }
+        }}
       />
     </>
   );
 }
 
-export function FractalViewer({ objData, depth = 2, autoRotate = true }: FractalViewerProps) {
+export function FractalViewer({ objData, totalDepth = 3, autoRotate = true, onAutoRotateChange }: FractalViewerProps) {
+  const initialDistance = calculateCameraDistance(totalDepth);
+
   return (
     <div className="w-full h-dvh bg-gray-950">
-      <Canvas camera={{ position: [0, 5, 70], fov: 45 }}>
-        <SceneContent objData={objData} autoRotate={autoRotate} />
+      <Canvas camera={{ position: [0, 0, initialDistance], fov: 45 }}>
+        <SceneContent objData={objData} autoRotate={autoRotate} onAutoRotateChange={onAutoRotateChange} totalDepth={totalDepth} />
       </Canvas>
     </div>
   );

@@ -91,9 +91,6 @@ export function RecipeBuilder({
       <div className="flex items-center justify-between">
         <div>
           <Label className="text-base">Layers</Label>
-          <p className="text-xs text-muted-foreground">
-            Each layer is a fractal structure with its own rules
-          </p>
         </div>
         <Button onClick={addLayer} size="sm" variant="secondary">
           <Plus className="h-3 w-3 mr-1" />
@@ -201,6 +198,7 @@ export function RecipeBuilder({
                           onValueChange={(value) => {
                             if (value) setRuleForDepth(depth, value as NodeType);
                           }}
+                          variant="outline"
                           className="flex-1 justify-start gap-1"
                         >
                           {NODE_TYPES.map((nodeType) => (
@@ -209,7 +207,11 @@ export function RecipeBuilder({
                                 <ToggleGroupItem
                                   value={nodeType.value}
                                   size="sm"
-                                  className="text-xs h-6 px-2"
+                                  className={`text-xs h-6 px-2 ${
+                                    currentType === nodeType.value
+                                      ? 'bg-primary text-primary-foreground hover:bg-primary/90 hover:text-primary-foreground'
+                                      : ''
+                                  }`}
                                 >
                                   {nodeType.label}
                                 </ToggleGroupItem>
@@ -251,18 +253,26 @@ export function RecipeBuilder({
                               updateLayer(index, { branch_directions: value as BranchDirection[] });
                             }
                           }}
+                          variant="outline"
                           className="justify-start gap-1"
                         >
-                          {ALL_BRANCH_DIRECTIONS.map((dir) => (
-                            <ToggleGroupItem
-                              key={dir}
-                              value={dir}
-                              size="sm"
-                              className="font-mono text-xs px-2 h-6"
-                            >
-                              {dir}
-                            </ToggleGroupItem>
-                          ))}
+                          {ALL_BRANCH_DIRECTIONS.map((dir) => {
+                            const isSelected = (layer.branch_directions || ALL_BRANCH_DIRECTIONS).includes(dir);
+                            return (
+                              <ToggleGroupItem
+                                key={dir}
+                                value={dir}
+                                size="sm"
+                                className={`font-mono text-xs px-2 h-6 ${
+                                  isSelected
+                                    ? 'bg-primary text-primary-foreground hover:bg-primary/90 hover:text-primary-foreground'
+                                    : ''
+                                }`}
+                              >
+                                {dir}
+                              </ToggleGroupItem>
+                            );
+                          })}
                         </ToggleGroup>
                       </div>
 

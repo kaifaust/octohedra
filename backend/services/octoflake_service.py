@@ -21,6 +21,7 @@ def generate_from_recipe(
     layers: List[Dict],
     depth_rules: List[Dict] = None,
     config_name: str = "rainbow_speed",
+    six_way: bool = False,
 ) -> str:
     """Generate a fractal mesh from a recipe and return as OBJ string.
 
@@ -28,6 +29,7 @@ def generate_from_recipe(
         layers: List of layer configurations, each with depth and fill_depth
         depth_rules: List of depth rule overrides
         config_name: Render config preset
+        six_way: Whether to apply six-way mirroring (for star shapes)
 
     Returns:
         OBJ file content as string
@@ -40,6 +42,11 @@ def generate_from_recipe(
     )
 
     grid = builder.materialize()
+
+    # Apply six-way mirroring if requested (for star preset)
+    if six_way:
+        grid.six_way()
+
     grid.crop(z_min=0)
     grid.compute_trimming()
 
@@ -85,6 +92,7 @@ def generate_fractal(
     fill_depth: int = 0,
     stack_height: int = 1,
     config_name: str = "rainbow_speed",
+    six_way: bool = False,
     # Legacy parameters (for backwards compatibility)
     shape: str = None,
     recipe: List[Dict] = None,
@@ -101,6 +109,7 @@ def generate_fractal(
         fill_depth: Fill depth parameter for presets
         stack_height: Stack height parameter for presets
         config_name: Render config preset
+        six_way: Whether to apply six-way mirroring (for star shapes)
 
         # Legacy parameters
         shape: Old shape parameter (maps to preset)
@@ -114,6 +123,9 @@ def generate_fractal(
         preset = shape
     if recipe is not None and depth_rules is None:
         depth_rules = recipe
+
+    # Track whether to apply six_way
+    apply_six_way = six_way
 
     # If layers not provided, get from preset
     if layers is None:
@@ -130,6 +142,9 @@ def generate_fractal(
                 depth_rules = list(rule_map.values())
             else:
                 depth_rules = preset_rules
+            # Get six_way from preset if not explicitly provided
+            if not six_way and recipe_dict.get("six_way", False):
+                apply_six_way = True
         else:
             # Default to simple flake
             layers = [{"depth": depth, "fill_depth": fill_depth}]
@@ -138,4 +153,5 @@ def generate_fractal(
         layers=layers,
         depth_rules=depth_rules,
         config_name=config_name,
+        six_way=apply_six_way,
     )

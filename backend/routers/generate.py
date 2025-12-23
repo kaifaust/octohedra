@@ -9,10 +9,10 @@ from services.octoflake_service import generate_fractal, AVAILABLE_PRESETS
 router = APIRouter()
 
 # Node types for depth rules
-NodeType = Literal["flake", "solid", "horizontal", "vertical", "skip"]
+NodeType = Literal["flake", "solid", "horizontal", "vertical"]
 
-# Available preset names
-PresetType = Literal["flake", "star", "tower", "hollow_tower", "flower", "spire", "solid_core"]
+# Available preset names (original artist shapes only)
+PresetType = Literal["flake", "tower", "evil_tower", "flower"]
 
 # Branch directions
 BranchDirection = Literal["+x", "-x", "+y", "-y"]
@@ -188,4 +188,5 @@ async def get_preset(preset_name: PresetType, depth: int = 3, fill_depth: int = 
         "preset": preset_name,
         "layers": recipe["layers"],
         "depth_rules": recipe.get("depth_rules", []),
+        "six_way": recipe.get("six_way", False),
     }
