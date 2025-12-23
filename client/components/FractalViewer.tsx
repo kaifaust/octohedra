@@ -43,8 +43,8 @@ function FractalModel({ objData }: { objData: string }) {
 
 export function FractalViewer({ objData }: FractalViewerProps) {
   return (
-    <div className="w-full h-[600px] bg-gray-900 rounded-lg overflow-hidden">
-      <Canvas camera={{ position: [50, 50, 50], fov: 50 }}>
+    <div className="w-full h-dvh bg-gray-950">
+      <Canvas camera={{ position: [0, 5, 70], fov: 45 }}>
         <ambientLight intensity={0.5} />
         <directionalLight position={[10, 10, 5]} intensity={1} />
         <Suspense fallback={null}>

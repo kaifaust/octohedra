@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { FractalViewer } from '@/components/FractalViewer';
 import { useFractalGeneration } from '@/hooks/useFractalGeneration';
 
@@ -10,72 +10,81 @@ export default function Home() {
 
   const { objData, isLoading, error, generate } = useFractalGeneration();
 
+  // Set viewport height CSS variable for mobile compatibility
+  useEffect(() => {
+    const setVH = () => {
+      document.documentElement.style.setProperty('--vh', `${window.innerHeight * 0.01}px`);
+    };
+    setVH();
+    window.addEventListener('resize', setVH);
+    return () => window.removeEventListener('resize', setVH);
+  }, []);
+
+  // Generate default fractal on page load
+  useEffect(() => {
+    generate({ iteration: 2, scale: 0 });
+  }, [generate]);
+
   const handleGenerate = () => {
     generate({ iteration, scale });
   };
 
   return (
-    <main className="min-h-screen p-8 bg-gray-950 text-white">
-      <h1 className="text-4xl font-bold mb-8">Octoflake Viewer</h1>
+    <main className="relative w-full h-dvh overflow-hidden">
+      {/* Full-screen 3D Viewer */}
+      <FractalViewer objData={objData} />
 
-      <div className="flex gap-8">
-        {/* Control Panel */}
-        <div className="w-64 space-y-6">
-          <div>
-            <label className="block text-sm font-medium mb-2">
-              Iteration (1-5)
-            </label>
-            <input
-              type="range"
-              min={1}
-              max={5}
-              value={iteration}
-              onChange={(e) => setIteration(Number(e.target.value))}
-              className="w-full"
-            />
-            <span className="text-lg font-mono">{iteration}</span>
-          </div>
+      {/* Overlay Controls */}
+      <div className="absolute top-4 left-4 w-64 p-4 bg-gray-900/80 backdrop-blur-sm rounded-lg text-white space-y-4">
+        <h1 className="text-xl font-bold">Octoflake</h1>
 
-          <div>
-            <label className="block text-sm font-medium mb-2">
-              Scale (0-3)
-            </label>
-            <input
-              type="range"
-              min={0}
-              max={3}
-              value={scale}
-              onChange={(e) => setScale(Number(e.target.value))}
-              className="w-full"
-            />
-            <span className="text-lg font-mono">{scale}</span>
-          </div>
-
-          <button
-            onClick={handleGenerate}
-            disabled={isLoading}
-            className="w-full py-3 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-600 disabled:cursor-not-allowed rounded font-semibold transition-colors"
-          >
-            {isLoading ? 'Generating...' : 'Generate Fractal'}
-          </button>
-
-          {error && (
-            <p className="text-red-400 text-sm bg-red-900/20 p-2 rounded">
-              {error.message}
-            </p>
-          )}
-
-          {objData && (
-            <p className="text-green-400 text-sm">
-              Model loaded ({Math.round(objData.length / 1024)}KB)
-            </p>
-          )}
+        <div>
+          <label className="block text-sm font-medium mb-1">
+            Iteration: {iteration}
+          </label>
+          <input
+            type="range"
+            min={1}
+            max={5}
+            value={iteration}
+            onChange={(e) => setIteration(Number(e.target.value))}
+            className="w-full"
+          />
         </div>
 
-        {/* 3D Viewer */}
-        <div className="flex-1">
-          <FractalViewer objData={objData} />
+        <div>
+          <label className="block text-sm font-medium mb-1">
+            Scale: {scale}
+          </label>
+          <input
+            type="range"
+            min={0}
+            max={3}
+            value={scale}
+            onChange={(e) => setScale(Number(e.target.value))}
+            className="w-full"
+          />
         </div>
+
+        <button
+          onClick={handleGenerate}
+          disabled={isLoading}
+          className="w-full py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-600 disabled:cursor-not-allowed rounded font-semibold transition-colors"
+        >
+          {isLoading ? 'Generating...' : 'Generate'}
+        </button>
+
+        {error && (
+          <p className="text-red-400 text-xs bg-red-900/30 p-2 rounded">
+            {error.message}
+          </p>
+        )}
+
+        {objData && (
+          <p className="text-green-400 text-xs">
+            {Math.round(objData.length / 1024)}KB loaded
+          </p>
+        )}
       </div>
     </main>
   );
