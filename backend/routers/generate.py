@@ -8,8 +8,12 @@ from services.octoflake_service import generate_fractal, generate_stl_from_recip
 
 router = APIRouter()
 
-# Node types for depth rules
-NodeType = Literal["flake", "solid", "horizontal", "vertical"]
+# Shape types for layers - how octahedra branch
+# - full: branch in all 6 directions (±x, ±y, ±z) - classic fractal
+# - horizontal: branch only horizontally (±x, ±y)
+# - vertical: branch only vertically (±z)
+# - solid: fill solid (no fractal recursion)
+LayerShape = Literal["full", "horizontal", "vertical", "solid"]
 
 # Available preset names (original artist shapes only)
 PresetType = Literal["flake", "tower", "evil_tower", "flower"]
@@ -21,145 +25,117 @@ PresetType = Literal["flake", "tower", "evil_tower", "flower"]
 # - upwards: continue building central stack (+z)
 BranchDirection = Literal["outwards", "inwards", "sideways", "upwards"]
 
-
-class DepthRule(BaseModel):
-    """A depth rule that modifies branching behavior at a specific depth."""
-    depth: int = Field(..., ge=1, le=5, description="Depth level this applies to")
-    type: NodeType = Field(default="flake", description="Node type at this depth")
+# Grow from options - where this layer builds from
+# - center: build from single center point (default, layers stack vertically)
+# - tips: build from each tip/endpoint of the previous layer's shape
+GrowFrom = Literal["center", "tips"]
 
 
 class Layer(BaseModel):
-    """A single layer in the recipe (a positioned flake)."""
-    depth: int = Field(default=3, ge=1, le=5, description="Flake depth for this layer")
-    fill_depth: int = Field(default=0, ge=0, le=5, description="Fill depth (0 = fractal, >0 = solid interior)")
+    """A single layer in the recipe - the fundamental building block."""
+    depth: int = Field(default=3, ge=1, le=5, description="Recursion depth (1-5), controls size and complexity")
+    shape: Optional[LayerShape] = Field(
+        default=None,
+        description="How octahedra branch at each level. Default: 'full'"
+    )
+    grow_from: Optional[GrowFrom] = Field(
+        default=None,
+        description="Where to build from: 'center' (single point) or 'tips' (each endpoint of previous layer). Default: 'center'"
+    )
     attach_next_at: Optional[int] = Field(
         default=None, ge=1, le=5,
-        description="Next layer attaches at this depth level (default: stack on top)"
+        description="Next layer attaches at this depth level (default: top)"
     )
     branch_directions: Optional[List[BranchDirection]] = Field(
         default=None,
-        description="Which directions to branch (empty/null = no branching). Options: outwards, inwards, sideways, upwards"
-    )
-    depth_rules: Optional[List[DepthRule]] = Field(
-        default=None,
-        description="Per-layer depth rules that override global rules"
+        description="Which directions to spawn sub-towers (empty/null = no branching)"
     )
 
 
 class GenerateRequest(BaseModel):
     """Request body for fractal generation.
 
-    The recipe system has two main components:
-    - layers: Stack of flakes positioned vertically (like Tower/Star presets)
-    - depth_rules: Modify branching behavior at specific depths
-
-    You can also use a preset as a starting point and modify from there.
+    The recipe system uses layers as the fundamental building block.
+    Each layer is a recursive octahedral structure with a specific shape.
     """
-    # Recipe components (new format)
+    # Recipe: list of layers
     layers: Optional[List[Layer]] = Field(
         default=None,
-        description="List of layer configurations. Each layer is a flake at a vertical position."
-    )
-    depth_rules: Optional[List[DepthRule]] = Field(
-        default=None,
-        description="List of depth rules that modify branching behavior"
+        description="List of layer configurations. Each layer has a depth, shape, and attach point."
     )
 
     # Preset support
     preset: Optional[PresetType] = Field(
         default=None,
-        description="Start from a preset recipe (flake, star, tower, hollow_tower, flower, spire, solid_core)"
+        description="Start from a preset recipe (flake, tower, evil_tower, flower)"
     )
 
     # Parameters for preset-based generation
     depth: int = Field(default=3, ge=1, le=5, description="Base depth (used with presets)")
-    fill_depth: int = Field(default=0, ge=0, le=3, description="Fill depth (used with presets)")
     stack_height: int = Field(default=1, ge=1, le=4, description="Stack height (used with tower-like presets)")
+
+    # Six-way mirroring (for star-like shapes)
+    six_way: bool = Field(default=False, description="Apply six-way mirroring")
 
     # Render config
     config: str = Field(default="rainbow_speed", description="Render config preset")
 
 
-class PresetInfo(BaseModel):
-    """Information about a preset recipe."""
-    name: str
-    description: str
-    layers: List[Layer]
-    depth_rules: List[DepthRule]
-
-
 @router.post("/generate", response_class=PlainTextResponse)
 async def generate(request: GenerateRequest):
-    """Generate a fractal using the unified recipe system.
+    """Generate a fractal using the recipe system.
 
     ## Recipe System
 
-    The recipe has two main components:
-
-    ### Layers
-    Stack flakes vertically. Each layer has:
-    - `depth`: Size/complexity of the flake (1-5)
-    - `fill_depth`: How much to fill solid (0 = pure fractal)
-    - `attach_next_at`: Next layer attaches at this depth level (optional)
-
-    ### Depth Rules
-    Modify branching at specific depths:
-    - `flake`: Full 6-way branching (default)
-    - `solid`: Fill solid, stop recursion
-    - `horizontal`: Only X/Y directions (creates disc layers)
-    - `vertical`: Only up/down (creates columns)
-    - `skip`: Skip this depth, continue recursing
+    Each layer is a recursive octahedral structure with:
+    - `depth`: Size/complexity (1-5). Higher = more detail and larger.
+    - `shape`: How octahedra branch at each level:
+      - `full`: All 6 directions (±x, ±y, ±z) - classic fractal
+      - `horizontal`: Only ±x, ±y - creates flat disc layers
+      - `vertical`: Only ±z - creates column structures
+      - `solid`: Fill solid, no recursion
+    - `attach_next_at`: Which depth level the next layer attaches to
+    - `branch_directions`: Spawn sub-structures in these directions
 
     ## Examples
 
     Simple flake:
     ```json
-    {"layers": [{"depth": 3, "fill_depth": 0}]}
+    {"layers": [{"depth": 3}]}
     ```
 
-    Tower:
+    Tower (stacked layers):
     ```json
     {"layers": [
-        {"depth": 3, "fill_depth": 0},
-        {"depth": 2, "fill_depth": 0},
-        {"depth": 1, "fill_depth": 0}
+        {"depth": 3},
+        {"depth": 2},
+        {"depth": 1}
     ]}
     ```
 
-    Flake with horizontal branching at depth 2:
+    Horizontal layer stacked on full flake:
     ```json
-    {
-        "layers": [{"depth": 3, "fill_depth": 0}],
-        "depth_rules": [{"depth": 2, "type": "horizontal"}]
-    }
+    {"layers": [
+        {"depth": 3, "shape": "full"},
+        {"depth": 2, "shape": "horizontal"}
+    ]}
     ```
 
     Use a preset:
     ```json
-    {"preset": "star", "depth": 4, "stack_height": 2}
-    ```
-
-    Customize a preset:
-    ```json
-    {
-        "preset": "tower",
-        "depth": 3,
-        "depth_rules": [{"depth": 1, "type": "solid"}]
-    }
+    {"preset": "tower", "depth": 4, "stack_height": 3}
     ```
     """
     # Convert Pydantic models to dicts
     layers_dicts = [layer.model_dump() for layer in request.layers] if request.layers else None
-    depth_rules_dicts = [rule.model_dump() for rule in request.depth_rules] if request.depth_rules else None
 
     obj_content = generate_fractal(
         layers=layers_dicts,
-        depth_rules=depth_rules_dicts,
         preset=request.preset,
         depth=request.depth,
-        fill_depth=request.fill_depth,
         stack_height=request.stack_height,
         config_name=request.config,
+        six_way=request.six_way,
     )
 
     return PlainTextResponse(
@@ -179,28 +155,23 @@ async def generate_stl(request: GenerateRequest):
 
     # Convert Pydantic models to dicts
     layers_dicts = [layer.model_dump() for layer in request.layers] if request.layers else None
-    depth_rules_dicts = [rule.model_dump() for rule in request.depth_rules] if request.depth_rules else None
 
     # Resolve layers from preset if needed
-    six_way = False
+    six_way = request.six_way
     if layers_dicts is None:
         if request.preset is not None:
             recipe_dict = get_preset_recipe(
                 request.preset,
                 depth=request.depth,
-                fill_depth=request.fill_depth,
                 stack_height=request.stack_height
             )
             layers_dicts = recipe_dict["layers"]
-            if not depth_rules_dicts:
-                depth_rules_dicts = recipe_dict.get("depth_rules", [])
-            six_way = recipe_dict.get("six_way", False)
+            six_way = six_way or recipe_dict.get("six_way", False)
         else:
-            layers_dicts = [{"depth": request.depth, "fill_depth": request.fill_depth}]
+            layers_dicts = [{"depth": request.depth}]
 
     stl_content = generate_stl_from_recipe(
         layers=layers_dicts,
-        depth_rules=depth_rules_dicts,
         config_name=request.config,
         six_way=six_way,
     )
@@ -219,23 +190,21 @@ async def get_presets() -> List[str]:
 
 
 @router.get("/presets/{preset_name}")
-async def get_preset(preset_name: PresetType, depth: int = 3, fill_depth: int = 0, stack_height: int = 1) -> dict:
+async def get_preset(preset_name: PresetType, depth: int = 3, stack_height: int = 1) -> dict:
     """Get the recipe for a preset with optional parameter adjustments.
 
     This allows the frontend to populate the recipe editor when a preset is selected.
     """
-    from services.octoflake_service import generate_from_preset
+    from printing.builders.RecipeBuilder import get_preset_recipe
 
-    recipe = generate_from_preset(
-        preset=preset_name,
+    recipe = get_preset_recipe(
+        name=preset_name,
         depth=depth,
-        fill_depth=fill_depth,
         stack_height=stack_height,
     )
 
     return {
         "preset": preset_name,
         "layers": recipe["layers"],
-        "depth_rules": recipe.get("depth_rules", []),
         "six_way": recipe.get("six_way", False),
     }

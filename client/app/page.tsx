@@ -18,7 +18,7 @@ export default function Home() {
   const [selectedPreset, setSelectedPreset] = useState<PresetType>('flake');
 
   // Recipe state (layers + six_way)
-  const [layers, setLayers] = useState<Layer[]>([{ depth: 2, fill_depth: 0 }]);
+  const [layers, setLayers] = useState<Layer[]>([{ depth: 2 }]);
   const [sixWay, setSixWay] = useState(false);
 
   // Track if recipe has been modified from preset

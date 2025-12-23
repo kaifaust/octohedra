@@ -2,9 +2,8 @@
 
 import { useCallback } from 'react';
 import { Plus, X, ChevronDown, ChevronUp, Copy } from 'lucide-react';
-import { Layer, DepthRule, NodeType, BranchDirection, BRANCH_DIRECTION_OPTIONS, nodeTypeToBranching, branchingToNodeType } from '@/lib/api';
+import { Layer, LayerShape, BranchDirection, GrowFrom, LAYER_SHAPE_OPTIONS, BRANCH_DIRECTION_OPTIONS, GROW_FROM_OPTIONS } from '@/lib/api';
 import { Button } from '@/components/ui/button';
-import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
@@ -18,40 +17,6 @@ export function RecipeBuilder({
   layers,
   onLayersChange,
 }: RecipeBuilderProps) {
-  // Get the depth rule for a specific layer and depth
-  const getRuleForDepth = useCallback((layerIndex: number, depth: number): NodeType => {
-    const layerRules = layers[layerIndex]?.depth_rules || [];
-    const rule = layerRules.find(r => r.depth === depth);
-    return rule?.type || 'flake';
-  }, [layers]);
-
-  // Update or add a depth rule for a specific layer
-  const setRuleForDepth = useCallback((layerIndex: number, depth: number, type: NodeType) => {
-    const layer = layers[layerIndex];
-    const currentRules = layer.depth_rules || [];
-    let newRules: DepthRule[];
-
-    if (type === 'flake') {
-      // Remove the rule if setting back to default
-      newRules = currentRules.filter(r => r.depth !== depth);
-    } else {
-      const existing = currentRules.find(r => r.depth === depth);
-      if (existing) {
-        newRules = currentRules.map(r =>
-          r.depth === depth ? { depth, type } : r
-        );
-      } else {
-        newRules = [...currentRules, { depth, type }];
-      }
-    }
-
-    // Update the layer with the new rules
-    const newLayers = layers.map((l, i) =>
-      i === layerIndex ? { ...l, depth_rules: newRules.length > 0 ? newRules : undefined } : l
-    );
-    onLayersChange(newLayers);
-  }, [layers, onLayersChange]);
-
   // Update a layer
   const updateLayer = useCallback((index: number, updates: Partial<Layer>) => {
     const newLayers = layers.map((layer, i) =>
@@ -86,20 +51,20 @@ export function RecipeBuilder({
   // Clone a layer (insert copy below)
   const cloneLayer = useCallback((index: number) => {
     const layerToClone = layers[index];
-    // Deep clone to avoid shared references
     const clonedLayer: Layer = {
       depth: layerToClone.depth,
+      ...(layerToClone.shape && { shape: layerToClone.shape }),
+      ...(layerToClone.grow_from && { grow_from: layerToClone.grow_from }),
       ...(layerToClone.attach_next_at !== undefined && { attach_next_at: layerToClone.attach_next_at }),
       ...(layerToClone.branch_directions && { branch_directions: [...layerToClone.branch_directions] }),
-      ...(layerToClone.depth_rules && { depth_rules: layerToClone.depth_rules.map(r => ({ ...r })) }),
     };
     const newLayers = [...layers];
     newLayers.splice(index + 1, 0, clonedLayer);
     onLayersChange(newLayers);
   }, [layers, onLayersChange]);
 
-  // Generate depth levels for a layer (from 1 up to layer.depth)
-  const getDepthLevels = (layerDepth: number) =>
+  // Generate attach point options for a layer (1 to depth)
+  const getAttachOptions = (layerDepth: number) =>
     Array.from({ length: layerDepth }, (_, i) => i + 1);
 
   return (
@@ -118,7 +83,8 @@ export function RecipeBuilder({
       {/* Layers */}
       <div className="space-y-3">
         {layers.map((layer, index) => {
-          const depthLevels = getDepthLevels(layer.depth);
+          const attachOptions = getAttachOptions(layer.depth);
+          const currentAttach = layer.attach_next_at ?? layer.depth; // Default to top
 
           return (
             <div key={index} className="bg-muted/50 p-3 rounded-lg border border-border/50 space-y-3">
@@ -172,7 +138,7 @@ export function RecipeBuilder({
 
               {/* Depth selector */}
               <div className="flex items-center gap-2">
-                <Label className="text-xs">Depth</Label>
+                <Label className="text-xs w-12">Depth</Label>
                 <div className="flex gap-1">
                   {[1, 2, 3, 4, 5].map((d) => (
                     <Button
@@ -188,93 +154,108 @@ export function RecipeBuilder({
                 </div>
               </div>
 
-              {/* Depth rules for this layer - octahedron branching per depth */}
-              <div className="space-y-2">
-                <div className="flex items-center justify-between">
-                  <Label className="text-xs text-muted-foreground">Octahedra at each depth</Label>
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <Label className="text-xs text-muted-foreground cursor-help">Attach</Label>
-                    </TooltipTrigger>
-                    <TooltipContent>
-                      <p>Next layer attaches at checked depth</p>
-                    </TooltipContent>
-                  </Tooltip>
-                </div>
-                <div className="space-y-1.5">
-                  {depthLevels.map((depth) => {
-                    const currentType = getRuleForDepth(index, depth);
-                    const { horizontal, vertical, fill } = nodeTypeToBranching(currentType);
-                    // Default attach point is the top (layer.depth) when attach_next_at is undefined
-                    const isAttachPoint = layer.attach_next_at === depth ||
-                      (layer.attach_next_at === undefined && depth === layer.depth);
-
-                    const updateBranching = (h: boolean, v: boolean, f: boolean) => {
-                      const newType = branchingToNodeType(h, v, f);
-                      setRuleForDepth(index, depth, newType);
-                    };
-
-                    return (
-                      <div key={depth} className="flex items-center gap-3">
-                        <span className="w-4 text-center text-xs font-mono text-muted-foreground">
-                          {depth}
-                        </span>
-                        <div className="flex items-center gap-3 flex-1">
-                          <label className="flex items-center gap-1.5 cursor-pointer">
-                            <Checkbox
-                              checked={horizontal && !fill}
-                              onCheckedChange={(checked) => {
-                                // Clicking H turns off fill
-                                updateBranching(!!checked, vertical, false);
-                              }}
-                            />
-                            <span className="text-xs">H</span>
-                          </label>
-                          <label className="flex items-center gap-1.5 cursor-pointer">
-                            <Checkbox
-                              checked={vertical && !fill}
-                              onCheckedChange={(checked) => {
-                                // Clicking V turns off fill
-                                updateBranching(horizontal, !!checked, false);
-                              }}
-                            />
-                            <span className="text-xs">V</span>
-                          </label>
-                          <label className="flex items-center gap-1.5 cursor-pointer">
-                            <Checkbox
-                              checked={fill}
-                              onCheckedChange={(checked) => {
-                                if (checked) {
-                                  // Enable fill (turns off H and V)
-                                  updateBranching(false, false, true);
-                                } else {
-                                  // Disable fill - restore to default (both H and V)
-                                  updateBranching(true, true, false);
-                                }
-                              }}
-                            />
-                            <span className="text-xs text-muted-foreground">Fill</span>
-                          </label>
-                        </div>
-                        <Checkbox
-                          checked={isAttachPoint}
-                          onCheckedChange={(checked) => {
-                            updateLayer(index, {
-                              attach_next_at: checked ? depth : undefined
-                            });
-                          }}
-                        />
-                      </div>
-                    );
-                  })}
-                </div>
+              {/* Shape selector */}
+              <div className="flex items-center gap-2">
+                <Label className="text-xs w-12">Shape</Label>
+                <ToggleGroup
+                  type="single"
+                  value={layer.shape || 'full'}
+                  onValueChange={(value) => {
+                    if (value) {
+                      updateLayer(index, { shape: value as LayerShape });
+                    }
+                  }}
+                  variant="outline"
+                  className="justify-start"
+                >
+                  {LAYER_SHAPE_OPTIONS.map((opt) => (
+                    <ToggleGroupItem
+                      key={opt.value}
+                      value={opt.value}
+                      size="sm"
+                      className="text-xs px-2 h-6 data-[state=on]:bg-primary data-[state=on]:text-primary-foreground"
+                      title={opt.description}
+                    >
+                      {opt.label}
+                    </ToggleGroupItem>
+                  ))}
+                </ToggleGroup>
               </div>
 
-              {/* Branch directions */}
-              <div className="space-y-2 pt-1 border-t border-border/30">
-                <div className="pt-2">
-                  <Label className="text-xs text-muted-foreground">Branch to sub-layers</Label>
+              {/* Grow from selector (only show for layers after the first) */}
+              {index > 0 && (
+                <div className="flex items-center gap-2">
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Label className="text-xs w-12 cursor-help">From</Label>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      <p>Where to build this layer from</p>
+                    </TooltipContent>
+                  </Tooltip>
+                  <ToggleGroup
+                    type="single"
+                    value={layer.grow_from || 'center'}
+                    onValueChange={(value) => {
+                      if (value) {
+                        updateLayer(index, { grow_from: value as GrowFrom });
+                      }
+                    }}
+                    variant="outline"
+                    className="justify-start"
+                  >
+                    {GROW_FROM_OPTIONS.map((opt) => (
+                      <ToggleGroupItem
+                        key={opt.value}
+                        value={opt.value}
+                        size="sm"
+                        className="text-xs px-2 h-6 data-[state=on]:bg-primary data-[state=on]:text-primary-foreground"
+                        title={opt.description}
+                      >
+                        {opt.label}
+                      </ToggleGroupItem>
+                    ))}
+                  </ToggleGroup>
                 </div>
+              )}
+
+              {/* Attach point selector (only show if not the last layer) */}
+              {index < layers.length - 1 && (
+                <div className="flex items-center gap-2">
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Label className="text-xs w-12 cursor-help">Attach</Label>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      <p>Next layer attaches at this depth level</p>
+                    </TooltipContent>
+                  </Tooltip>
+                  <div className="flex gap-1">
+                    {attachOptions.map((d) => (
+                      <Button
+                        key={d}
+                        variant={currentAttach === d ? "default" : "outline"}
+                        size="sm"
+                        className="h-6 w-6 p-0 text-xs"
+                        onClick={() => updateLayer(index, { attach_next_at: d })}
+                      >
+                        {d}
+                      </Button>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Branch directions */}
+              <div className="flex items-center gap-2">
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Label className="text-xs w-12 cursor-help">Branch</Label>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <p>Spawn sub-structures in these directions</p>
+                  </TooltipContent>
+                </Tooltip>
                 <ToggleGroup
                   type="multiple"
                   value={layer.branch_directions || []}

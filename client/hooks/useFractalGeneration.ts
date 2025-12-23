@@ -34,11 +34,10 @@ export function useFractalGeneration() {
   const fetchPresetRecipe = useCallback(async (
     preset: PresetType,
     depth: number = 3,
-    fillDepth: number = 0,
     stackHeight: number = 1
   ): Promise<Recipe | null> => {
     try {
-      return await getPresetRecipe(preset, depth, fillDepth, stackHeight);
+      return await getPresetRecipe(preset, depth, stackHeight);
     } catch (e) {
       setError(e instanceof Error ? e : new Error('Unknown error'));
       return null;
