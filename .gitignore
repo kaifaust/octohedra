@@ -58,3 +58,5 @@ next-env.d.ts
 
 # Environment files
 .env*.local
+
+CLAUDE.local.md
