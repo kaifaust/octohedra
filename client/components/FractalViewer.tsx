@@ -3,47 +3,59 @@
 import { Canvas, useFrame, useThree } from '@react-three/fiber';
 import { TrackballControls } from '@react-three/drei';
 import { OBJLoader } from 'three-stdlib';
-import { useMemo, Suspense, useRef, useEffect } from 'react';
+import { useMemo, Suspense, useRef, useEffect, useCallback } from 'react';
 import * as THREE from 'three';
 import type { TrackballControls as TrackballControlsType } from 'three-stdlib';
 
 interface FractalViewerProps {
   objData: string | null;
-  totalDepth?: number; // Sum of all layer depths for zoom calculation
   autoRotate?: boolean;
   onAutoRotateChange?: (autoRotate: boolean) => void;
 }
 
-function FractalModel({ objData }: { objData: string }) {
-  const { geometry, offset } = useMemo(() => {
-    const loader = new OBJLoader();
-    const group = loader.parse(objData);
+// Parse OBJ data and return geometry info including bounding sphere radius
+function parseObjData(objData: string): { geometry: THREE.BufferGeometry | null; radius: number } {
+  const loader = new OBJLoader();
+  const group = loader.parse(objData);
 
-    let foundGeo: THREE.BufferGeometry | null = null;
-    group.traverse((child) => {
-      if (child instanceof THREE.Mesh && child.geometry) {
-        foundGeo = child.geometry;
-      }
-    });
+  let foundGeo: THREE.BufferGeometry | null = null;
+  group.traverse((child) => {
+    if (child instanceof THREE.Mesh && child.geometry) {
+      foundGeo = child.geometry;
+    }
+  });
 
-    if (!foundGeo) return { geometry: null, offset: new THREE.Vector3() };
+  if (!foundGeo) return { geometry: null, radius: 1 };
 
-    // Type assertion since TypeScript can't track the narrowing through the callback
-    const geo = foundGeo as THREE.BufferGeometry;
+  const geo = foundGeo as THREE.BufferGeometry;
 
-    // Compute bounding box to find the true visual center
-    geo.computeBoundingBox();
-    const box = geo.boundingBox!;
+  // Compute bounding box to find the true visual center
+  geo.computeBoundingBox();
+  const box = geo.boundingBox!;
 
-    // Calculate the center of the bounding box
-    const center = new THREE.Vector3();
-    box.getCenter(center);
+  // Calculate the center of the bounding box
+  const center = new THREE.Vector3();
+  box.getCenter(center);
 
-    // Translate geometry so its bounding box center is at origin
-    geo.translate(-center.x, -center.y, -center.z);
+  // Translate geometry so its bounding box center is at origin
+  geo.translate(-center.x, -center.y, -center.z);
 
-    return { geometry: geo, offset: center };
-  }, [objData]);
+  // Compute bounding sphere for camera distance calculation
+  geo.computeBoundingSphere();
+  const radius = geo.boundingSphere?.radius || 1;
+
+  return { geometry: geo, radius };
+}
+
+function FractalModel({ objData, onRadiusChange }: { objData: string; onRadiusChange?: (radius: number) => void }) {
+  const { geometry, radius } = useMemo(() => parseObjData(objData), [objData]);
+
+  // Notify parent of radius change
+  useEffect(() => {
+    if (onRadiusChange && radius) {
+      onRadiusChange(radius);
+    }
+  }, [radius, onRadiusChange]);
 
   if (!geometry) return null;
 
@@ -59,26 +71,26 @@ function FractalModel({ objData }: { objData: string }) {
   );
 }
 
-// Calculate camera distance based on total depth
-function calculateCameraDistance(totalDepth: number): number {
-  // Base distance for depth 3 (single flake)
-  const baseDistance = 12;
-  // Linear scale: add distance for each depth unit above 3
-  const additionalDistance = (totalDepth - 3) * 3;
-  return baseDistance + additionalDistance;
+// Calculate camera distance based on model bounding sphere radius
+function calculateCameraDistance(radius: number): number {
+  // Position camera so model fills ~60% of viewport vertically
+  // For 45° FOV, distance = radius / tan(FOV/2) * factor
+  // factor > 1 gives more margin around the model
+  return radius * 2.8;
 }
+
+// Default initial distance before model loads
+const DEFAULT_CAMERA_DISTANCE = 12;
 
 // Scene content with orbit animation
 function SceneContent({
   objData,
   autoRotate,
   onAutoRotateChange,
-  totalDepth
 }: {
   objData: string | null;
   autoRotate: boolean;
   onAutoRotateChange?: (autoRotate: boolean) => void;
-  totalDepth: number;
 }) {
   const { camera } = useThree();
   const controlsRef = useRef<TrackballControlsType>(null);
@@ -86,34 +98,37 @@ function SceneContent({
   const wasAutoRotating = useRef(false);
 
   // Animation parameters
-  const orbitSpeed = 2.4; // Speed of the orbit (radians per second)
-
-  // Calculate camera distance based on total depth
-  const cameraDistance = calculateCameraDistance(totalDepth);
+  const spinSpeed = 0.5; // Speed of the spin (radians per second)
 
   // Store the base spherical coordinates (captured from current camera position)
-  const baseSpherical = useRef(new THREE.Spherical(cameraDistance, Math.PI / 2, 0));
+  // For Z-up: phi is angle from Z axis, theta is rotation in XY plane
+  // phi = PI/2 - 0.3 (slightly above horizontal), theta = PI/4 (45° in XY plane)
+  const baseSpherical = useRef(new THREE.Spherical(DEFAULT_CAMERA_DISTANCE, Math.PI / 2 - 0.3, Math.PI / 4));
 
-  // Track previous objData to detect when new model renders
-  const prevObjData = useRef(objData);
-  const pendingDistance = useRef(cameraDistance);
+  // Track applied camera distance (only updates when model loads)
+  const appliedCameraDistance = useRef(DEFAULT_CAMERA_DISTANCE);
 
-  // Update pending distance and camera when objData or cameraDistance changes
-  useEffect(() => {
-    pendingDistance.current = cameraDistance;
+  // Callback when model reports its radius
+  const handleRadiusChange = useCallback((radius: number) => {
+    const newDistance = calculateCameraDistance(radius);
+    appliedCameraDistance.current = newDistance;
 
-    // Only update camera when new model data arrives
-    if (prevObjData.current !== objData && objData !== null) {
-      // Update camera position to new distance while maintaining angle
-      const spherical = new THREE.Spherical();
-      spherical.setFromVector3(camera.position);
-      spherical.radius = pendingDistance.current;
-      const newPos = new THREE.Vector3().setFromSpherical(spherical);
-      camera.position.copy(newPos);
-      baseSpherical.current.radius = pendingDistance.current;
-      prevObjData.current = objData;
+    // Update camera position to new distance while maintaining angle
+    const spherical = new THREE.Spherical();
+    spherical.setFromVector3(camera.position);
+    spherical.radius = newDistance;
+    const newPos = new THREE.Vector3().setFromSpherical(spherical);
+    camera.position.copy(newPos);
+    baseSpherical.current.radius = newDistance;
+
+    // Update optical center offset
+    const newOffset = -newDistance * 0.08;
+    camera.lookAt(0, 0, newOffset);
+    if (controlsRef.current) {
+      controlsRef.current.target.set(0, 0, newOffset);
+      controlsRef.current.update();
     }
-  }, [objData, cameraDistance, camera]);
+  }, [camera]);
 
   useFrame((_, delta) => {
     if (!controlsRef.current) return;
@@ -129,22 +144,22 @@ function SceneContent({
       return;
     }
 
-    timeRef.current += delta * orbitSpeed;
+    timeRef.current += delta * spinSpeed;
 
-    // Calculate orbital offset in spherical coordinates
-    const thetaOffset = Math.sin(timeRef.current) * 0.4; // Azimuthal wobble (left/right)
-    const phiOffset = Math.cos(timeRef.current) * 0.25; // Polar wobble (up/down)
+    // Rotate around the Z axis (pyramid's vertical axis from base to tip)
+    // Keep the same distance and Z height, rotate in the XY plane
+    const basePos = new THREE.Vector3().setFromSpherical(baseSpherical.current);
+    const xyDistance = Math.sqrt(basePos.x * basePos.x + basePos.y * basePos.y);
+    const baseAngle = Math.atan2(basePos.y, basePos.x);
 
-    // Apply to camera position using spherical coordinates (use current radius, not pending)
-    const spherical = new THREE.Spherical(
-      baseSpherical.current.radius,
-      baseSpherical.current.phi + phiOffset,
-      baseSpherical.current.theta + thetaOffset
-    );
+    const newAngle = baseAngle + timeRef.current;
+    const newX = xyDistance * Math.cos(newAngle);
+    const newY = xyDistance * Math.sin(newAngle);
 
-    const newPos = new THREE.Vector3().setFromSpherical(spherical);
-    camera.position.copy(newPos);
-    camera.lookAt(0, 0, 0);
+    camera.position.set(newX, newY, basePos.z);
+    camera.up.set(0, 0, 1);
+    // Look at the optical center offset point (use applied distance, not pending)
+    camera.lookAt(0, 0, -appliedCameraDistance.current * 0.08);
 
     // Update controls to match
     controlsRef.current.update();
@@ -203,7 +218,7 @@ function SceneContent({
       {/* Back/rim light - creates edge definition */}
       <directionalLight ref={backLightRef} intensity={0.2} color="#fff5e0" />
       <Suspense fallback={null}>
-        {objData && <FractalModel objData={objData} />}
+        {objData && <FractalModel objData={objData} onRadiusChange={handleRadiusChange} />}
       </Suspense>
       <TrackballControls
         ref={controlsRef}
@@ -223,13 +238,20 @@ function SceneContent({
   );
 }
 
-export function FractalViewer({ objData, totalDepth = 3, autoRotate = true, onAutoRotateChange }: FractalViewerProps) {
-  const initialDistance = calculateCameraDistance(totalDepth);
+export function FractalViewer({ objData, autoRotate = true, onAutoRotateChange }: FractalViewerProps) {
+  // Camera position for side view with pyramid base pointing down
+  // The model has Z as vertical axis, so we position camera in XY plane with slight elevation
+  // 45-degree angle in XY plane, slightly above Z=0 to see the 3D shape
+  const angle = Math.PI / 4; // 45 degrees in XY plane
+  const elevation = 0.3; // Slight elevation to see 3D nature
+  const initialX = DEFAULT_CAMERA_DISTANCE * Math.cos(angle) * Math.cos(elevation);
+  const initialY = DEFAULT_CAMERA_DISTANCE * Math.sin(angle) * Math.cos(elevation);
+  const initialZ = DEFAULT_CAMERA_DISTANCE * Math.sin(elevation);
 
   return (
     <div className="w-full h-dvh bg-gray-950">
-      <Canvas camera={{ position: [0, 0, initialDistance], fov: 45 }}>
-        <SceneContent objData={objData} autoRotate={autoRotate} onAutoRotateChange={onAutoRotateChange} totalDepth={totalDepth} />
+      <Canvas camera={{ position: [initialX, initialY, initialZ], fov: 45, up: [0, 0, 1] }}>
+        <SceneContent objData={objData} autoRotate={autoRotate} onAutoRotateChange={onAutoRotateChange} />
       </Canvas>
     </div>
   );

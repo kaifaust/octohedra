@@ -33,7 +33,7 @@ export default function Home() {
   const [isModified, setIsModified] = useState(false);
 
   // Camera animation toggle
-  const [autoRotate, setAutoRotate] = useState(false);
+  const [autoRotate, setAutoRotate] = useState(true);
 
   // Drawer visibility
   const [drawerOpen, setDrawerOpen] = useState(true);
@@ -121,12 +121,9 @@ export default function Home() {
     }
   }, [objData]);
 
-  // Calculate total depth for zoom (sum of all layer depths)
-  const totalDepth = layers.reduce((sum, l) => sum + l.depth, 0);
-
   return (
     <main className="relative w-full h-dvh overflow-hidden">
-      <FractalViewer objData={objData} totalDepth={totalDepth} autoRotate={autoRotate} onAutoRotateChange={setAutoRotate} />
+      <FractalViewer objData={objData} autoRotate={autoRotate} onAutoRotateChange={setAutoRotate} />
 
       {/* Centered loading spinner */}
       {isLoading && (
