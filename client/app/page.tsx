@@ -5,7 +5,15 @@ import { RotateCw, PanelLeftClose, PanelLeftOpen, Download } from 'lucide-react'
 import { FractalViewer } from '@/components/FractalViewer';
 import { RecipeBuilder } from '@/components/RecipeBuilder';
 import { useFractalGeneration } from '@/hooks/useFractalGeneration';
-import { PresetType, Layer, PRESETS, downloadStl } from '@/lib/api';
+import { PresetType, Layer, PRESETS, downloadStl, PrintConfig, PRINT_CONFIG_OPTIONS } from '@/lib/api';
+import {
+  DropdownMenu,
+  DropdownMenuTrigger,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+} from '@/components/ui/dropdown-menu';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
@@ -216,25 +224,43 @@ export default function Home() {
         <div className="absolute bottom-4 right-4 flex items-center gap-2 text-xs text-white/70 bg-black/30 px-2 py-1 rounded backdrop-blur-sm">
           <span>{fileSize}</span>
           {objData && (
-            <button
-              onClick={async () => {
-                try {
-                  const blob = await downloadStl({ layers, six_way: sixWay });
-                  const url = URL.createObjectURL(blob);
-                  const a = document.createElement('a');
-                  a.href = url;
-                  a.download = 'octoflake.stl';
-                  a.click();
-                  URL.revokeObjectURL(url);
-                } catch (e) {
-                  console.error('STL download failed:', e);
-                }
-              }}
-              className="hover:text-white transition-colors"
-              title="Download STL"
-            >
-              <Download className="h-3 w-3" />
-            </button>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <button
+                  className="hover:text-white transition-colors"
+                  title="Download STL"
+                >
+                  <Download className="h-3 w-3" />
+                </button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" side="top">
+                <DropdownMenuLabel>Download STL</DropdownMenuLabel>
+                <DropdownMenuSeparator />
+                {PRINT_CONFIG_OPTIONS.map((config) => (
+                  <DropdownMenuItem
+                    key={config.value}
+                    onClick={async () => {
+                      try {
+                        const blob = await downloadStl({ layers, six_way: sixWay }, config.value);
+                        const url = URL.createObjectURL(blob);
+                        const a = document.createElement('a');
+                        a.href = url;
+                        a.download = `octoflake-${config.value}.stl`;
+                        a.click();
+                        URL.revokeObjectURL(url);
+                      } catch (e) {
+                        console.error('STL download failed:', e);
+                      }
+                    }}
+                  >
+                    <div className="flex flex-col">
+                      <span className="font-medium">{config.label}</span>
+                      <span className="text-xs text-muted-foreground">{config.description}</span>
+                    </div>
+                  </DropdownMenuItem>
+                ))}
+              </DropdownMenuContent>
+            </DropdownMenu>
           )}
         </div>
       )}
