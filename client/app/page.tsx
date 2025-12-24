@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { RotateCw, PanelLeftClose, PanelLeftOpen, Download } from 'lucide-react';
+import { RotateCw, PanelLeftClose, PanelLeftOpen, Download, Info } from 'lucide-react';
 import { FractalViewer } from '@/components/FractalViewer';
 import { RecipeBuilder } from '@/components/RecipeBuilder';
 import { useFractalGeneration } from '@/hooks/useFractalGeneration';
@@ -20,6 +20,13 @@ import { Separator } from '@/components/ui/separator';
 import { Toggle } from '@/components/ui/toggle';
 import { Label } from '@/components/ui/label';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from '@/components/ui/dialog';
 
 export default function Home() {
   // Current preset (for the selector)
@@ -216,7 +223,7 @@ export default function Home() {
         </Card>
       )}
 
-      {/* File size display and download button */}
+      {/* File size display, download button, and credits */}
       {fileSize && (
         <div className="absolute bottom-4 right-4 flex items-center gap-2 text-xs text-white/70 bg-black/30 px-2 py-1 rounded backdrop-blur-sm">
           <span>{fileSize}</span>
@@ -259,6 +266,65 @@ export default function Home() {
               </DropdownMenuContent>
             </DropdownMenu>
           )}
+          <span className="mx-1 text-white/30">|</span>
+          <Dialog>
+            <DialogTrigger asChild>
+              <button
+                className="hover:text-white transition-colors flex items-center gap-1"
+                title="Credits"
+              >
+                <Info className="h-3 w-3" />
+                <span>Credits</span>
+              </button>
+            </DialogTrigger>
+            <DialogContent className="bg-card/95 backdrop-blur-sm border-border/50">
+              <DialogHeader>
+                <DialogTitle>Credits</DialogTitle>
+              </DialogHeader>
+              <div className="space-y-4 text-sm">
+                <p>
+                  Octoflake is an open source project - a collaboration of nerds who like fractals.
+                </p>
+                <div className="space-y-2">
+                  <div>
+                    <span className="font-medium">Jamie</span> - Project originator, fractal engine
+                    <br />
+                    <a
+                      href="https://jamie.example.com"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-primary hover:underline"
+                    >
+                      jamie.example.com
+                    </a>
+                  </div>
+                  <div>
+                    <span className="font-medium">Kai</span> - Web application
+                    <br />
+                    <a
+                      href="https://kai.example.com"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-primary hover:underline"
+                    >
+                      kai.example.com
+                    </a>
+                  </div>
+                </div>
+                <Separator />
+                <div>
+                  <a
+                    href="https://github.com/example/octoflake"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-primary hover:underline"
+                  >
+                    View on GitHub
+                  </a>
+                </div>
+              </div>
+            </DialogContent>
+          </Dialog>
         </div>
       )}
     </main>
