@@ -10,7 +10,7 @@ Run the full-stack app locally (fractal generator + 3D viewer):
 # Terminal 1: Start the Python backend
 cd backend
 poetry install
-poetry run uvicorn main:app --reload --port 8000
+poetry run uvicorn main:app --reload --port 8001
 
 # Terminal 2: Start the Next.js frontend
 cd client
