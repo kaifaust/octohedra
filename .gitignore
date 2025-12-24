@@ -10,7 +10,9 @@ dist/
 downloads/
 eggs/
 .eggs/
-lib/
+# Python lib directories (but not client/lib which is needed)
+/lib/
+/backend/lib/
 lib64/
 parts/
 sdist/
