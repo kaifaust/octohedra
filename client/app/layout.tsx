@@ -13,8 +13,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Octoflake",
-  description: "Fractal 3D viewer and generator",
+  title: "Octohedra",
+  description: "Fractal geometry generator - create and 3D print octahedral fractals",
 };
 
 export default function RootLayout({

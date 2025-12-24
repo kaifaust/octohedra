@@ -1,10 +1,10 @@
-from typing import Literal, List, Optional
+from typing import Literal
 
 from fastapi import APIRouter
 from fastapi.responses import PlainTextResponse, Response
 from pydantic import BaseModel, Field
 
-from services.octoflake_service import generate_fractal, generate_stl_from_recipe, AVAILABLE_PRESETS
+from services.octohedra_service import AVAILABLE_PRESETS, generate_fractal, generate_stl_from_recipe
 
 router = APIRouter()
 
@@ -26,15 +26,15 @@ BranchDirection = Literal["outwards", "inwards", "sideways", "upwards"]
 class Layer(BaseModel):
     """A single layer in the recipe - the fundamental building block."""
     depth: int = Field(default=3, ge=1, le=5, description="Recursion depth (1-5), controls size and complexity")
-    shape: Optional[LayerShape] = Field(
+    shape: LayerShape | None = Field(
         default=None,
         description="How octahedra branch at each level. Default: 'fractal'"
     )
-    attach_next_at: Optional[int] = Field(
+    attach_next_at: int | None = Field(
         default=None, ge=1, le=5,
         description="Next layer attaches at this depth level (default: top)"
     )
-    branch_directions: Optional[List[BranchDirection]] = Field(
+    branch_directions: list[BranchDirection] | None = Field(
         default=None,
         description="Which directions to spawn sub-towers (empty/null = no branching)"
     )
@@ -47,13 +47,13 @@ class GenerateRequest(BaseModel):
     Each layer is a recursive octahedral structure with a specific shape.
     """
     # Recipe: list of layers
-    layers: Optional[List[Layer]] = Field(
+    layers: list[Layer] | None = Field(
         default=None,
         description="List of layer configurations. Each layer has a depth, shape, and attach point."
     )
 
     # Preset support
-    preset: Optional[PresetType] = Field(
+    preset: PresetType | None = Field(
         default=None,
         description="Start from a preset recipe (flake, tower, evil_tower, flower)"
     )
@@ -129,7 +129,7 @@ async def generate_stl(request: GenerateRequest):
 
     Same parameters as /generate, but returns binary STL instead of OBJ.
     """
-    from services.octoflake_service import get_preset_recipe
+    from services.octohedra_service import get_preset_recipe
 
     # Convert Pydantic models to dicts
     layers_dicts = [layer.model_dump() for layer in request.layers] if request.layers else None
@@ -157,12 +157,12 @@ async def generate_stl(request: GenerateRequest):
     return Response(
         content=stl_content,
         media_type="model/stl",
-        headers={"Content-Disposition": "attachment; filename=octoflake.stl"},
+        headers={"Content-Disposition": "attachment; filename=octohedra.stl"},
     )
 
 
 @router.get("/presets")
-async def get_presets() -> List[str]:
+async def get_presets() -> list[str]:
     """Get list of available preset names."""
     return AVAILABLE_PRESETS
 
@@ -173,7 +173,7 @@ async def get_preset(preset_name: PresetType, depth: int = 3, stack_height: int 
 
     This allows the frontend to populate the recipe editor when a preset is selected.
     """
-    from printing.builders.RecipeBuilder import get_preset_recipe
+    from octohedra.builders.RecipeBuilder import get_preset_recipe
 
     recipe = get_preset_recipe(
         name=preset_name,

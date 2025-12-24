@@ -5,7 +5,7 @@ import { RotateCw, PanelLeftClose, PanelLeftOpen, Download, Info } from 'lucide-
 import { FractalViewer } from '@/components/FractalViewer';
 import { RecipeBuilder } from '@/components/RecipeBuilder';
 import { useFractalGeneration } from '@/hooks/useFractalGeneration';
-import { PresetType, Layer, PRESETS, downloadStl, PrintConfig, PRINT_CONFIG_OPTIONS } from '@/lib/api';
+import { PresetType, Layer, PRESETS, downloadStl, PRINT_CONFIG_OPTIONS } from '@/lib/api';
 import {
   DropdownMenu,
   DropdownMenuTrigger,
@@ -19,7 +19,6 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
 import { Toggle } from '@/components/ui/toggle';
 import { Label } from '@/components/ui/label';
-import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import {
   Dialog,
   DialogContent,
@@ -56,16 +55,6 @@ export default function Home() {
     window.addEventListener('resize', setVH);
     return () => window.removeEventListener('resize', setVH);
   }, []);
-
-  // Load preset recipe when preset changes
-  const loadPreset = useCallback(async (preset: PresetType) => {
-    const recipe = await fetchPresetRecipe(preset);
-    if (recipe) {
-      setLayers(recipe.layers);
-      setSixWay(recipe.six_way || false);
-      setIsModified(false);
-    }
-  }, [fetchPresetRecipe]);
 
   // Generate default fractal on page load
   useEffect(() => {
@@ -167,7 +156,7 @@ export default function Home() {
                 >
                   <PanelLeftClose className="h-4 w-4" />
                 </Button>
-                <CardTitle className="text-xl">Octoflake</CardTitle>
+                <CardTitle className="text-xl">Octohedra</CardTitle>
               </div>
               <Toggle
                 pressed={autoRotate}
@@ -249,7 +238,7 @@ export default function Home() {
                         const url = URL.createObjectURL(blob);
                         const a = document.createElement('a');
                         a.href = url;
-                        a.download = `octoflake-${config.value}.stl`;
+                        a.download = `octohedra-${config.value}.stl`;
                         a.click();
                         URL.revokeObjectURL(url);
                       } catch (e) {
@@ -283,38 +272,20 @@ export default function Home() {
               </DialogHeader>
               <div className="space-y-4 text-sm">
                 <p>
-                  Octoflake is an open source project - a collaboration of nerds who like fractals.
+                  Octohedra is an open source fractal geometry generator.
                 </p>
                 <div className="space-y-2">
                   <div>
-                    <span className="font-medium">Jamie</span> - Project originator, fractal engine
-                    <br />
-                    <a
-                      href="https://jamie.example.com"
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-primary hover:underline"
-                    >
-                      jamie.example.com
-                    </a>
+                    <span className="font-medium">Jeremy</span> - Fractal engine
                   </div>
                   <div>
                     <span className="font-medium">Kai</span> - Web application
-                    <br />
-                    <a
-                      href="https://kai.example.com"
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-primary hover:underline"
-                    >
-                      kai.example.com
-                    </a>
                   </div>
                 </div>
                 <Separator />
                 <div>
                   <a
-                    href="https://github.com/example/octoflake"
+                    href="https://github.com/kaifaust/octohedra"
                     target="_blank"
                     rel="noopener noreferrer"
                     className="text-primary hover:underline"

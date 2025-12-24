@@ -1,12 +1,12 @@
 [tool.poetry]
-name = "octoflake-backend"
+name = "octohedra-backend"
 version = "0.1.0"
-description = "Octoflake fractal generator and API"
+description = "Octohedra fractal generator and API"
 authors = []
 packages = [
     {include = "routers"},
     {include = "services"},
-    {include = "printing", from = "Octoflake/analysis"},
+    {include = "octohedra"},
 ]
 
 [tool.poetry.dependencies]
@@ -14,7 +14,7 @@ python = "^3.11"
 # API
 fastapi = "^0.115"
 uvicorn = {extras = ["standard"], version = "^0.32"}
-# Octoflake core
+# Octohedra core
 numpy = "^2.0"
 scipy = "^1.11"
 matplotlib = "^3.8"
@@ -35,7 +35,7 @@ requires = ["poetry-core"]
 build-backend = "poetry.core.masonry.api"
 
 [tool.pytest.ini_options]
-testpaths = ["Octoflake/analysis/printing/tests"]
+testpaths = ["octohedra/tests"]
 python_files = ["test_*.py"]
 python_functions = ["test_*"]
 addopts = "-v --tb=short"
@@ -57,8 +57,8 @@ ignore = [
 ]
 
 [tool.ruff.lint.isort]
-known-first-party = ["printing", "routers", "services"]
+known-first-party = ["octohedra", "routers", "services"]
 
 [tool.coverage.run]
-source = ["Octoflake/analysis/printing"]
-omit = ["Octoflake/analysis/printing/tests/*"]
+source = ["octohedra"]
+omit = ["octohedra/tests/*"]

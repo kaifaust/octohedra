@@ -3,7 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from routers import generate
 
-app = FastAPI(title="Octoflake API", version="1.0.0")
+app = FastAPI(title="Octohedra API", version="1.0.0")
 
 app.add_middleware(
     CORSMiddleware,
