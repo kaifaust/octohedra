@@ -154,7 +154,7 @@ export default function Home() {
 
       {/* Drawer panel */}
       {drawerOpen && (
-        <Card className="absolute top-4 left-4 w-96 max-h-[calc(100dvh-2rem)] flex flex-col border-border/50 bg-card/80 backdrop-blur-sm pb-0">
+        <Card className="absolute top-4 left-4 max-h-[calc(100dvh-2rem)] flex flex-col border-border/50 bg-card/80 backdrop-blur-sm pb-0">
           <CardHeader className="pb-2 shrink-0">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
