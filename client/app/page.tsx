@@ -1,12 +1,11 @@
 'use client';
 
 import { useState, useEffect, useCallback, useMemo } from 'react';
-import { RotateCw, PanelLeftClose, PanelLeftOpen, Download, Info, Share2, Check, Sliders } from 'lucide-react';
+import { RotateCw, PanelLeftClose, PanelLeftOpen, Download, Info, Share2, Check } from 'lucide-react';
 import { FractalViewer } from '@/components/FractalViewer';
 import { RecipeBuilder } from '@/components/RecipeBuilder';
 import { MobileBottomSheet } from '@/components/MobileBottomSheet';
 import { useFractalGeneration } from '@/hooks/useFractalGeneration';
-import { useIsMobile } from '@/hooks/useIsMobile';
 import { useUrlSync, getInitialUrlState, generateShareUrl, UrlState } from '@/hooks/useUrlSync';
 import { PresetType, Layer, PRESETS, downloadStl, PRINT_CONFIG_OPTIONS } from '@/lib/api';
 import {
@@ -50,9 +49,6 @@ export default function Home() {
   const [autoRotate, setAutoRotate] = useState(true);
   const [drawerOpen, setDrawerOpen] = useState(true);
   const [shareTooltip, setShareTooltip] = useState<'idle' | 'copied'>('idle');
-
-  // Mobile detection
-  const isMobile = useIsMobile();
 
   const { objData, fileSize, isLoading, error, generate, fetchPresetRecipe } = useFractalGeneration();
 
@@ -286,53 +282,51 @@ export default function Home() {
         </div>
       )}
 
-      {/* Desktop: Side drawer panel */}
-      {!isMobile && (
-        <>
-          {/* Collapsed drawer toggle button */}
-          {!drawerOpen && (
-            <Button
-              variant="secondary"
-              size="icon"
-              className="absolute top-4 left-4 bg-card/80 backdrop-blur-sm border-border/50"
-              onClick={() => setDrawerOpen(true)}
-              aria-label="Open panel"
-            >
-              <PanelLeftOpen className="h-4 w-4" />
-            </Button>
-          )}
+      {/* Desktop: Side drawer panel - hidden on mobile via CSS */}
+      <div className="hidden md:block">
+        {/* Collapsed drawer toggle button */}
+        {!drawerOpen && (
+          <Button
+            variant="secondary"
+            size="icon"
+            className="absolute top-4 left-4 bg-card/80 backdrop-blur-sm border-border/50"
+            onClick={() => setDrawerOpen(true)}
+            aria-label="Open panel"
+          >
+            <PanelLeftOpen className="h-4 w-4" />
+          </Button>
+        )}
 
-          {/* Drawer panel */}
-          {drawerOpen && (
-            <div className="absolute top-4 left-4 max-h-[calc(100dvh-2rem)] flex flex-col rounded-xl border border-border/50 bg-card/80 backdrop-blur-sm shadow-sm">
-              {/* Header */}
-              <div className="flex items-center gap-4 px-4 py-3">
-                <div className="flex items-center gap-2">
-                  <Button
-                    variant="ghost"
-                    size="icon-sm"
-                    onClick={() => setDrawerOpen(false)}
-                    aria-label="Close panel"
-                    className="h-6 w-6 text-muted-foreground hover:text-foreground"
-                  >
-                    <PanelLeftClose className="h-4 w-4" />
-                  </Button>
-                  <h2 className="text-xl font-semibold">Octohedra</h2>
-                </div>
-                {headerActions}
+        {/* Drawer panel */}
+        {drawerOpen && (
+          <div className="absolute top-4 left-4 max-h-[calc(100dvh-2rem)] flex flex-col rounded-xl border border-border/50 bg-card/80 backdrop-blur-sm shadow-sm">
+            {/* Header */}
+            <div className="flex items-center gap-4 px-4 py-3">
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="ghost"
+                  size="icon-sm"
+                  onClick={() => setDrawerOpen(false)}
+                  aria-label="Close panel"
+                  className="h-6 w-6 text-muted-foreground hover:text-foreground"
+                >
+                  <PanelLeftClose className="h-4 w-4" />
+                </Button>
+                <h2 className="text-xl font-semibold">Octohedra</h2>
               </div>
-
-              {/* Content */}
-              <div className="overflow-y-auto flex-1 min-h-0 px-4 pb-4">
-                {controlPanelContent}
-              </div>
+              {headerActions}
             </div>
-          )}
-        </>
-      )}
 
-      {/* Mobile: Bottom sheet */}
-      {isMobile && (
+            {/* Content */}
+            <div className="overflow-y-auto flex-1 min-h-0 px-4 pb-4">
+              {controlPanelContent}
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Mobile: Bottom sheet - hidden on desktop via CSS */}
+      <div className="md:hidden">
         <MobileBottomSheet
           isOpen={drawerOpen}
           onOpenChange={setDrawerOpen}
@@ -341,11 +335,11 @@ export default function Home() {
         >
           {controlPanelContent}
         </MobileBottomSheet>
-      )}
+      </div>
 
       {/* File size display, download button, and credits */}
       {fileSize && (
-        <div className={`absolute ${isMobile ? 'bottom-16' : 'bottom-4'} right-4 flex items-center gap-2 text-xs text-white/70 bg-black/30 px-2 py-1 rounded backdrop-blur-sm`}>
+        <div className="absolute bottom-4 md:bottom-4 right-4 flex items-center gap-2 text-xs text-white/70 bg-black/30 px-2 py-1 rounded backdrop-blur-sm z-50">
           <span>{fileSize}</span>
           {objData && (
             <DropdownMenu>
@@ -357,7 +351,7 @@ export default function Home() {
                   <Download className="h-3 w-3" />
                 </button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" side="top">
+              <DropdownMenuContent align="end" side="top" className="z-50">
                 <DropdownMenuLabel>Download STL</DropdownMenuLabel>
                 <DropdownMenuSeparator />
                 {PRINT_CONFIG_OPTIONS.map((config) => (
@@ -398,7 +392,7 @@ export default function Home() {
                 <span>Credits</span>
               </button>
             </DialogTrigger>
-            <DialogContent className="bg-card/95 backdrop-blur-sm border-border/50">
+            <DialogContent className="bg-card/95 backdrop-blur-sm border-border/50 z-50">
               <DialogHeader>
                 <DialogTitle>Credits</DialogTitle>
               </DialogHeader>
