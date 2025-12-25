@@ -6,38 +6,48 @@ Presets (flake, tower, flower) are just pre-defined recipes.
 
 ## Recipe Structure
 
-A recipe is a list of **layers**. Each layer is a recursive octahedral structure:
+A recipe is a list of **layers**. Each layer corresponds to one "iteration" level
+in the OG project - a recursive octahedral structure:
 
-1. **depth** - Recursion depth (1-5), controls size and complexity
-2. **shape** - How octahedra branch at each level:
+1. **depth** - Size (1-5), controls size and complexity
+2. **shape** - How octahedra branch internally:
    - 'fractal': All 6 directions (±x, ±y, ±z) - classic fractal (default)
    - 'solid': Fill solid, no recursion
-3. **attach_next_at** - Which depth level the next layer attaches to (default: top)
-4. **branch_directions** - Spawn sub-structures in these directions:
-   - 'outwards': Continue away from parent direction
-   - 'inwards': Back toward parent
-   - 'sideways': Perpendicular to parent
-   - 'upwards': Continue building central stack (+z)
-5. **branch_style** - How sub-structures are built:
-   - 'evil': Sub-towers at waist, simple tower (no further branching) - EvilTowerX style
-   - 'flower': Sub-towers at edge, recursive branching continues - FlowerTower style
+3. **spawn** - Where to create sub-structures horizontally:
+   - 'out': Continue away from parent direction
+   - 'in': Back toward parent
+   - 'side': Perpendicular to parent
+4. **bloom** - Do spawns continue the branching pattern? (recursive like Flower)
+5. **echo** - Do spawns contain the full recipe at smaller scale? (like Temple Complex)
 
 ## Example Recipes
 
-Simple flake (depth 3):
-{
-    "layers": [{"depth": 3}]
-}
+Simple flake:
+{"layers": [{"depth": 3}]}
 
-Tower (depth 4, stacking down to 1):
-{
-    "layers": [
-        {"depth": 4},
-        {"depth": 3},
-        {"depth": 2},
-        {"depth": 1}
-    ]
-}
+Tower (stacked layers):
+{"layers": [{"depth": 4}, {"depth": 3}, {"depth": 2}, {"depth": 1}]}
+
+Evil Tower (spawns with no bloom):
+{"layers": [
+    {"depth": 3, "spawn": ["out", "in", "side"]},
+    {"depth": 2, "spawn": ["out", "in", "side"]},
+    {"depth": 1}
+]}
+
+Flower (spawns that bloom):
+{"layers": [
+    {"depth": 4, "spawn": ["out", "side"], "bloom": true},
+    {"depth": 3, "spawn": ["out", "side"], "bloom": true},
+    {"depth": 2}
+]}
+
+Temple Complex (spawns that echo the full recipe):
+{"layers": [
+    {"depth": 4, "spawn": ["out", "in", "side"], "echo": true},
+    {"depth": 3, "spawn": ["out", "in", "side"]},
+    {"depth": 2}
+]}
 """
 
 from dataclasses import dataclass, field
@@ -51,8 +61,13 @@ from octohedra.utils.OctoUtil import DOWN, UP, E, N, S, W, X, Y, Z, p2, f_rad
 # Shape types for layers
 ShapeType = Literal["fractal", "solid"]
 
-# Branch styles - determines geometry of sub-structures
-BranchStyle = Literal["evil", "flower"]
+# Spawn directions - where to create sub-structures horizontally
+SpawnDirection = Literal["out", "in", "side"]
+
+# Legacy branch styles (for backwards compatibility)
+# 'waist': Sub-towers at narrower point, simple tower (no recursion) - EvilTowerX style
+# 'edge': Sub-towers at outer extent, recursive branching continues - FlowerTower style
+BranchStyle = Literal["waist", "edge"]
 
 
 # Pre-defined recipes for common shapes
@@ -69,37 +84,33 @@ PRESET_RECIPES = {
         ],
     },
     "evil_tower": {
-        # Evil tower: tower with sub-towers branching in 4 directions at each level
-        # Uses "evil" branch style: sub-towers at waist, simple towers (no further branching)
+        # Evil tower: tower with spawns in all directions, no bloom
+        # Spawns are simple towers that don't continue branching
         "layers": [
-            {"depth": 3, "branch_directions": ["outwards", "inwards", "sideways", "upwards"], "branch_style": "evil"},
-            {"depth": 2, "branch_directions": ["outwards", "inwards", "sideways", "upwards"], "branch_style": "evil"},
+            {"depth": 3, "spawn": ["out", "in", "side"]},
+            {"depth": 2, "spawn": ["out", "in", "side"]},
             {"depth": 1},
         ],
     },
     "flower": {
-        # Flower: tower with horizontal branches at each layer
-        # Uses "flower" branch style: sub-towers at edge, recursive branching continues
-        # Note: flower uses outwards+sideways (excludes direction we came from in recursive branches)
+        # Flower: tower with blooming spawns
+        # Spawns continue the branching pattern recursively
         "layers": [
-            {"depth": 4, "branch_directions": ["outwards", "sideways", "upwards"], "branch_style": "flower"},
-            {"depth": 3, "branch_directions": ["outwards", "sideways", "upwards"], "branch_style": "flower"},
-            {"depth": 2, "branch_directions": ["outwards", "sideways", "upwards"], "branch_style": "flower"},
+            {"depth": 4, "spawn": ["out", "side"], "bloom": True},
+            {"depth": 3, "spawn": ["out", "side"], "bloom": True},
+            {"depth": 2, "spawn": ["out", "side"], "bloom": True},
             {"depth": 1},
         ],
     },
     "temple_complex": {
-        # Temple Complex: Evil tower with grid expansion
-        # Each grid node gets an evil tower, recursively expanding in 4 directions
-        # Uses "evil" branch style for the tower at each grid node
+        # Temple Complex: tower with echoing spawns
+        # Spawns contain the full recipe at smaller scale
         "layers": [
-            {"depth": 4, "branch_directions": ["outwards", "inwards", "sideways", "upwards"], "branch_style": "evil"},
-            {"depth": 3, "branch_directions": ["outwards", "inwards", "sideways", "upwards"], "branch_style": "evil"},
-            {"depth": 2, "branch_directions": ["outwards", "inwards", "sideways", "upwards"], "branch_style": "evil"},
+            {"depth": 4, "spawn": ["out", "in", "side"], "echo": True},
+            {"depth": 3, "spawn": ["out", "in", "side"]},
+            {"depth": 2, "spawn": ["out", "in", "side"]},
             {"depth": 1},
         ],
-        "grid_depth": 4,  # Controls grid recursion depth
-        "grid_min_depth": 2,  # Stop grid expansion at this depth
     },
 }
 
@@ -109,7 +120,7 @@ def get_preset_recipe(name: str, depth: int = 3, stack_height: int = 1) -> dict:
 
     Args:
         name: Preset name
-        depth: Base depth (complexity) of the shape
+        depth: Base depth (size) of the layers
         stack_height: Number of additional layers for tower-like shapes
     """
     if name not in PRESET_RECIPES:
@@ -129,56 +140,45 @@ def get_preset_recipe(name: str, depth: int = 3, stack_height: int = 1) -> dict:
         return {"layers": layers}
 
     elif name == "evil_tower":
-        # Evil tower: tower with sub-towers branching in 4 directions at each level
-        # Uses "evil" branch style - sub-towers at waist, simple towers
+        # Evil tower: tower with spawns in all directions, no bloom
         layers = []
         min_depth = max(1, depth - stack_height)
         for d in range(depth, min_depth - 1, -1):
             layer = {"depth": d}
-            # All layers except the smallest get branches
+            # All layers except the smallest get spawns
             if d > min_depth:
-                layer["branch_directions"] = ["outwards", "inwards", "sideways", "upwards"]
-                layer["branch_style"] = "evil"
+                layer["spawn"] = ["out", "in", "side"]
             layers.append(layer)
         return {"layers": layers}
 
     elif name == "flower":
-        # Flower: tower with branches at each layer (except the last)
-        # Uses "flower" branch style - sub-towers at edge, recursive branching
+        # Flower: tower with blooming spawns
         layers = []
         min_depth = max(1, depth - stack_height - 1)
         for d in range(depth, min_depth - 1, -1):
             layer = {"depth": d}
-            # All layers except the smallest get branches
+            # All layers except the smallest get blooming spawns
             if d > min_depth:
-                layer["branch_directions"] = ["outwards", "sideways", "upwards"]
-                layer["branch_style"] = "flower"
+                layer["spawn"] = ["out", "side"]
+                layer["bloom"] = True
             layers.append(layer)
         return {"layers": layers}
 
     elif name == "temple_complex":
-        # Temple Complex: Evil tower layers with grid expansion
-        # depth controls base layer depth, stack_height controls grid recursion
-        grid_depth = max(2, min(5, depth + 1))  # Grid recursion depth
-        grid_min_depth = max(1, grid_depth - stack_height - 1)  # Stop expansion at this depth
-
-        # Build evil tower layers scaled to depth
-        # Uses "evil" branch style - sub-towers at waist, simple towers
+        # Temple Complex: tower with echoing spawns on first layer
+        # The echo makes spawns contain the full recipe at smaller scale
         layers = []
-        min_layer_depth = max(1, depth - stack_height)
-        for d in range(depth, min_layer_depth - 1, -1):
+        min_depth = max(1, depth - stack_height)
+        for i, d in enumerate(range(depth, min_depth - 1, -1)):
             layer = {"depth": d}
-            # All layers except the smallest get branches
-            if d > min_layer_depth:
-                layer["branch_directions"] = ["outwards", "inwards", "sideways", "upwards"]
-                layer["branch_style"] = "evil"
+            # All layers except the smallest get spawns
+            if d > min_depth:
+                layer["spawn"] = ["out", "in", "side"]
+                # Only the first layer echoes (recursive self-replication)
+                if i == 0:
+                    layer["echo"] = True
             layers.append(layer)
-
-        return {
-            "layers": layers,
-            "grid_depth": grid_depth,
-            "grid_min_depth": grid_min_depth,
-        }
+        return {"layers": layers}
 
     # Fallback
     return {
@@ -192,31 +192,34 @@ class RecipeBuilder(OctoBuilder):
     A builder that constructs fractals from recipes.
 
     Each layer is a recursive octahedral structure with a shape that determines
-    how it branches. Layers are stacked vertically, with attach points controlling
-    where each layer connects to the previous one.
+    how it branches. Layers are stacked vertically.
 
-    For city-like structures, grid_depth and grid_min_depth control 2D grid expansion:
-    - At each grid node, the layers are built as a tower
-    - The grid recursively expands in 4 horizontal directions
-    - Each expansion level uses a smaller grid_depth
+    New generative model:
+    - spawn: Where to create sub-structures (out/in/side)
+    - bloom: Do spawns continue branching? (like Flower)
+    - echo: Do spawns contain full recipe at smaller scale? (like Temple Complex)
     """
 
     # Recipe parameters
     layers: list[dict] = field(default_factory=list)
     center: OctoVector = field(default_factory=OctoVector)
 
-    # Grid expansion for city-like structures
-    grid_depth: int | None = None  # Current grid expansion depth (None = no grid)
-    grid_min_depth: int = 2  # Stop grid expansion at this depth
-
-    # For branch recursion: the direction we came from (to compute relative directions)
+    # For spawn recursion: the direction we came from (to compute relative directions)
     origin_dir: tuple[int, int] | None = None
+
+    # Echo recursion depth tracking (internal)
+    _echo_depth: int = 0  # How many levels of echo recursion we're in
+    _echo_max_depth: int = 4  # Maximum echo recursion depth (prevents infinite recursion)
+
+    # Legacy: Grid expansion (deprecated - use echo instead)
+    grid_depth: int | None = None
+    grid_min_depth: int = 2
 
     # Legacy parameters (for backwards compatibility)
     max_depth: int = 3
-    depth_rules: list[dict] = field(default_factory=list)  # Deprecated
+    depth_rules: list[dict] = field(default_factory=list)
 
-    # Horizontal direction tuples for branching
+    # Horizontal direction tuples for spawning
     ALL_HORIZ_DIRS = {(1, 0), (-1, 0), (0, 1), (0, -1)}
 
     def __post_init__(self):
@@ -224,27 +227,62 @@ class RecipeBuilder(OctoBuilder):
             # No layers specified AND not in grid mode - create default single flake
             self.layers = [{"depth": self.max_depth}]
 
+    def _compute_spawn_directions(
+        self,
+        spawn: list[str],
+        origin_dir: tuple[int, int] | None,
+    ) -> set[tuple[int, int]]:
+        """
+        Compute spawn directions based on spawn options and origin direction.
+
+        Args:
+            spawn: List of spawn directions: 'out', 'in', 'side'
+            origin_dir: The direction we came from (e.g., (1, 0) if we spawned from +x)
+                       None for the root level (all horizontal directions are valid)
+
+        Returns:
+            Set of (dx, dy) tuples representing spawn directions
+        """
+        result = set()
+
+        # If no origin, we're at the root - use all horizontal directions for 'out'
+        if origin_dir is None:
+            if "out" in spawn:
+                result.update(self.ALL_HORIZ_DIRS)
+            return result
+
+        ox, oy = origin_dir
+
+        for d in spawn:
+            if d == "out":
+                # Continue away from parent (same direction we traveled)
+                result.add((ox, oy))
+            elif d == "in":
+                # Back toward parent (opposite direction)
+                result.add((-ox, -oy))
+            elif d == "side":
+                # Perpendicular to origin direction
+                if ox != 0:
+                    result.add((0, 1))
+                    result.add((0, -1))
+                else:
+                    result.add((1, 0))
+                    result.add((-1, 0))
+
+        return result
+
     def _compute_branch_directions(
         self,
         directions: list[str],
         origin_dir: tuple[int, int] | None,
     ) -> set[tuple[int, int]]:
         """
-        Compute branch directions based on semantic options and origin direction.
-
-        Args:
-            directions: List of semantic directions like 'outwards', 'inwards', 'sideways', 'upwards'
-            origin_dir: The direction we came from (e.g., (1, 0) if we branched from +x)
-                       None for the root level (all horizontal directions are valid)
-
-        Returns:
-            Set of (dx, dy) tuples representing allowed horizontal branch directions
+        [LEGACY] Compute branch directions based on semantic options and origin direction.
+        Use _compute_spawn_directions instead for new code.
         """
         result = set()
 
-        # If no origin, we're at the root - use all horizontal directions
         if origin_dir is None:
-            # At root, 'outwards' means all 4 directions
             if "outwards" in directions:
                 result.update(self.ALL_HORIZ_DIRS)
             return result
@@ -253,64 +291,58 @@ class RecipeBuilder(OctoBuilder):
 
         for d in directions:
             if d == "outwards":
-                # Continue away from parent (same direction we traveled to get here)
                 result.add((ox, oy))
             elif d == "inwards":
-                # Back toward parent (opposite of direction we traveled)
                 result.add((-ox, -oy))
             elif d == "sideways":
-                # Perpendicular to origin direction
                 if ox != 0:
                     result.add((0, 1))
                     result.add((0, -1))
                 else:
                     result.add((1, 0))
                     result.add((-1, 0))
-            # 'upwards' is handled separately (controls +z continuation)
 
         return result
 
     def materialize_additive(self, bonus_iteration=0):
-        """Build the complete structure from layers."""
+        """Build the complete structure from layers.
+
+        Handles the new spawn/bloom/echo model:
+        - spawn: Where to create sub-structures (out/in/side)
+        - bloom: Do spawns continue branching? (like Flower)
+        - echo: Do spawns contain full recipe at smaller scale? (like Temple Complex)
+        """
         combined_grid = OctoGrid()
 
-        # If in grid mode but below minimum depth, return empty grid
-        # This matches TempleComplexBuilder behavior where i < min_i creates nothing
+        # Legacy: Handle grid_depth for backwards compatibility
+        # New code should use 'echo' in layers instead
         if self.grid_depth is not None and self.grid_depth < self.grid_min_depth:
             return combined_grid
 
-        # Handle city-style grid expansion (matches TempleComplexBuilder)
         if self.grid_depth is not None and self.grid_depth >= self.grid_min_depth:
-            # Build EvilTowerX-style tower at this grid node
-            # Tower layers go from grid_depth down to 1
-            # TempleComplexBuilder uses max_subtower_i = grid_depth - 1
-            # This means: top layer (grid_depth) has NO branches, all others do
+            # Build tower at this grid node using legacy logic
             tower_layers = []
             max_subtower_depth = self.grid_depth - 1
             for d in range(self.grid_depth, 0, -1):
                 layer = {"depth": d}
-                # Branches on layers where min_subtower_i <= d <= max_subtower_i
-                # min_subtower_i defaults to 1, max is grid_depth - 1
                 if 1 <= d <= max_subtower_depth:
-                    layer["branch_directions"] = ["outwards", "inwards", "sideways", "upwards"]
-                    layer["branch_style"] = "evil"  # Grid uses evil-style towers
+                    layer["spawn"] = ["out", "in", "side"]  # Use new spawn syntax
                 tower_layers.append(layer)
 
             tower_builder = RecipeBuilder(
                 layers=tower_layers,
                 center=self.center,
-                grid_depth=None,  # Don't recurse grid in tower
+                grid_depth=None,
             )
             tower_grid = tower_builder.materialize_additive()
             combined_grid = OctoGrid.merge(combined_grid, tower_grid)
 
             # Expand grid in 4 horizontal directions
-            # Each sub-grid node will build its own tower based on (grid_depth - 1)
             grid_offset = p2(self.grid_depth + 1)
             for dx, dy in self.ALL_HORIZ_DIRS:
                 sub_center = self.center + OctoVector(grid_offset * dx, grid_offset * dy, 0)
                 sub_builder = RecipeBuilder(
-                    layers=[],  # Empty - tower is derived from grid_depth
+                    layers=[],
                     center=sub_center,
                     grid_depth=self.grid_depth - 1,
                     grid_min_depth=self.grid_min_depth,
@@ -320,23 +352,29 @@ class RecipeBuilder(OctoBuilder):
 
             return combined_grid
 
-        # Standard tower/flake building (no grid expansion)
+        # Standard layer building with spawn/bloom/echo
         current_z = 0
-        prev_layer = None  # Track previous layer for attach_next_at
+        prev_layer = None
 
         for layer_idx, layer in enumerate(self.layers):
             layer_depth = layer.get("depth", 3)
             layer_shape = layer.get("shape", "fractal")
-            # Branching is enabled if branch_directions is present and non-empty
-            layer_branch_dirs = layer.get("branch_directions")
-            has_branches = bool(layer_branch_dirs)
 
-            # Calculate z position based on previous layer's attach_next_at
+            # New spawn model
+            layer_spawn = layer.get("spawn")
+            layer_bloom = layer.get("bloom", False)
+            layer_echo = layer.get("echo", False)
+            has_spawns = bool(layer_spawn)
+
+            # Legacy: branch_directions for backwards compatibility
+            layer_branch_dirs = layer.get("branch_directions")
+            has_legacy_branches = bool(layer_branch_dirs)
+
+            # Calculate z position based on previous layer
             if prev_layer is not None:
                 attach_at = prev_layer.get("attach_next_at")
                 prev_depth = prev_layer.get("depth", 3)
                 if attach_at is not None:
-                    # Attach at a specific depth level of the previous layer
                     prev_layer_center_z = current_z - p2(prev_depth + 1)
                     layer_z = prev_layer_center_z + p2(attach_at + 1)
                 else:
@@ -349,35 +387,131 @@ class RecipeBuilder(OctoBuilder):
             # Build this layer's structure
             layer_grid = OctoGrid()
             self._build_layer_recursive(layer_grid, layer_depth, layer_shape, layer_center)
-
-            # Merge into combined grid
             combined_grid = OctoGrid.merge(combined_grid, layer_grid)
 
-            # Handle branches based on branch_style
-            if has_branches:
-                # Check if upwards is included (controls whether central stack continues)
-                include_upwards = "upwards" in layer_branch_dirs
-                branch_style = layer.get("branch_style", "evil")  # Default to evil for backwards compat
+            # Handle spawns (new model)
+            if has_spawns:
+                i = layer_depth
+                if i >= 2:  # Need at least depth 2 for sub-structures
+                    spawn_dirs = self._compute_spawn_directions(layer_spawn, self.origin_dir)
 
-                # Compute which horizontal directions to branch based on origin
+                    if layer_echo:
+                        # Echo: spawns contain the full recipe at smaller scale
+                        # This creates Temple Complex-like recursive self-similarity
+                        if self._echo_depth < self._echo_max_depth:
+                            # Use edge-style positioning for echo (at outer extent)
+                            horiz_offset = p2(i + 1)
+
+                            for dx, dy in spawn_dirs:
+                                spawn_center = self.center + OctoVector(
+                                    horiz_offset * dx,
+                                    horiz_offset * dy,
+                                    0  # Echo starts at ground level
+                                )
+
+                                # Scale down the recipe for the echo
+                                # Each layer depth is reduced by 1
+                                echo_layers = []
+                                for orig_layer in self.layers:
+                                    new_depth = orig_layer.get("depth", 3) - 1
+                                    if new_depth >= 1:
+                                        echo_layer = {"depth": new_depth}
+                                        if orig_layer.get("spawn"):
+                                            echo_layer["spawn"] = orig_layer["spawn"].copy()
+                                        if orig_layer.get("bloom"):
+                                            echo_layer["bloom"] = True
+                                        if orig_layer.get("echo"):
+                                            echo_layer["echo"] = True
+                                        if orig_layer.get("shape"):
+                                            echo_layer["shape"] = orig_layer["shape"]
+                                        echo_layers.append(echo_layer)
+
+                                if echo_layers:
+                                    echo_builder = RecipeBuilder(
+                                        layers=echo_layers,
+                                        center=spawn_center,
+                                        origin_dir=(dx, dy),
+                                        _echo_depth=self._echo_depth + 1,
+                                        _echo_max_depth=self._echo_max_depth,
+                                    )
+                                    echo_grid = echo_builder.materialize_additive()
+                                    combined_grid = OctoGrid.merge(combined_grid, echo_grid)
+
+                    elif layer_bloom:
+                        # Bloom: spawns continue the branching pattern (like Flower)
+                        horiz_offset = p2(i + 1)
+                        sub_base_depth = i - 1
+                        z_drop = -p2(sub_base_depth + 1)
+                        after_layer_z = layer_z + p2(i + 1)
+
+                        for dx, dy in spawn_dirs:
+                            spawn_center = self.center + OctoVector(
+                                horiz_offset * dx,
+                                horiz_offset * dy,
+                                after_layer_z + z_drop
+                            )
+
+                            # Build from depth (i-1) down, continuing the bloom pattern
+                            sub_layers = []
+                            for d in range(sub_base_depth, 0, -1):
+                                sub_layer = {"depth": d}
+                                if d > 1:
+                                    sub_layer["spawn"] = layer_spawn.copy()
+                                    sub_layer["bloom"] = True
+                                sub_layers.append(sub_layer)
+
+                            if sub_layers:
+                                sub_builder = RecipeBuilder(
+                                    layers=sub_layers,
+                                    center=spawn_center,
+                                    origin_dir=(dx, dy),
+                                )
+                                sub_grid = sub_builder.materialize_additive()
+                                combined_grid = OctoGrid.merge(combined_grid, sub_grid)
+
+                    else:
+                        # No bloom, no echo: simple tower spawns (like Evil Tower)
+                        horiz_offset = f_rad(i) - f_rad(i - 2)
+                        sub_tower_z = layer_z
+
+                        for dx, dy in spawn_dirs:
+                            sub_base_depth = i - 1
+                            tower_z_offset = f_rad(sub_base_depth - 1) if sub_base_depth >= 1 else 0
+
+                            spawn_center = self.center + OctoVector(
+                                horiz_offset * dx,
+                                horiz_offset * dy,
+                                sub_tower_z + tower_z_offset
+                            )
+
+                            # Simple tower: no further branching
+                            sub_layers = []
+                            for d in range(sub_base_depth, 0, -1):
+                                sub_layers.append({"depth": d})
+
+                            if sub_layers:
+                                sub_builder = RecipeBuilder(
+                                    layers=sub_layers,
+                                    center=spawn_center,
+                                    origin_dir=(dx, dy),
+                                )
+                                sub_grid = sub_builder.materialize_additive()
+                                combined_grid = OctoGrid.merge(combined_grid, sub_grid)
+
+            # Legacy: Handle branch_directions for backwards compatibility
+            elif has_legacy_branches:
+                include_upwards = "upwards" in layer_branch_dirs
+                branch_style = layer.get("branch_style", "waist")
                 current_dirs = self._compute_branch_directions(layer_branch_dirs, self.origin_dir)
 
                 i = layer_depth
-                if i >= 2:  # Need at least depth 2 for sub-towers
-                    if branch_style == "evil":
-                        # EvilTowerX geometry: sub-towers at horizontal offset from layer center
-                        # Offset = f_rad(i) - f_rad(i-2) = 2^(i+1) - 2^(i-1)
-                        # This places sub-towers at the "waist" of the current flake
+                if i >= 2:
+                    if branch_style == "waist":
                         horiz_offset = f_rad(i) - f_rad(i - 2)
-
-                        # Sub-towers start at the same Z as current layer center
                         sub_tower_z = layer_z
 
                         for dx, dy in current_dirs:
-                            # Sub-tower base depth
                             sub_base_depth = i - 1
-
-                            # TowerX adds f_rad(base_i - 1) to the Z position for first flake
                             tower_z_offset = f_rad(sub_base_depth - 1) if sub_base_depth >= 1 else 0
 
                             branch_center = self.center + OctoVector(
@@ -386,9 +520,6 @@ class RecipeBuilder(OctoBuilder):
                                 sub_tower_z + tower_z_offset
                             )
 
-                            sub_origin = (dx, dy)
-
-                            # Evil style: simple tower (no further branching)
                             sub_layers = []
                             for d in range(sub_base_depth, 0, -1):
                                 sub_layers.append({"depth": d})
@@ -397,21 +528,15 @@ class RecipeBuilder(OctoBuilder):
                                 sub_builder = RecipeBuilder(
                                     layers=sub_layers,
                                     center=branch_center,
-                                    origin_dir=sub_origin,
+                                    origin_dir=(dx, dy),
                                 )
                                 sub_grid = sub_builder.materialize_additive()
                                 combined_grid = OctoGrid.merge(combined_grid, sub_grid)
 
-                    elif branch_style == "flower":
-                        # FlowerTower geometry: sub-towers at edge of layer
-                        # horiz_offset = p2(i + 1) = f_rad(i)
-                        # z_offset = -p2(t_i + 1) = -f_rad(i-1) where t_i = i-1
+                    elif branch_style == "edge":
                         horiz_offset = p2(i + 1)
                         sub_base_depth = i - 1
-                        z_drop = -p2(sub_base_depth + 1)  # = -f_rad(sub_base_depth)
-
-                        # The branch position is relative to where we are AFTER the layer
-                        # (c += Z * p2(i+1) happens, then we spawn at c + offset)
+                        z_drop = -p2(sub_base_depth + 1)
                         after_layer_z = layer_z + p2(i + 1)
 
                         for dx, dy in current_dirs:
@@ -421,29 +546,23 @@ class RecipeBuilder(OctoBuilder):
                                 after_layer_z + z_drop
                             )
 
-                            sub_origin = (dx, dy)
-
-                            # Flower style: recursive - remaining layers continue branching
-                            # Build from depth (i-1) down, with same branch pattern
                             sub_layers = []
                             for d in range(sub_base_depth, 0, -1):
                                 sub_layer = {"depth": d}
-                                # Continue the flower pattern (with branches) for all except last
                                 if d > 1:
                                     sub_layer["branch_directions"] = layer_branch_dirs.copy()
-                                    sub_layer["branch_style"] = "flower"
+                                    sub_layer["branch_style"] = "edge"
                                 sub_layers.append(sub_layer)
 
                             if sub_layers:
                                 sub_builder = RecipeBuilder(
                                     layers=sub_layers,
                                     center=branch_center,
-                                    origin_dir=sub_origin,
+                                    origin_dir=(dx, dy),
                                 )
                                 sub_grid = sub_builder.materialize_additive()
                                 combined_grid = OctoGrid.merge(combined_grid, sub_grid)
 
-                # If upwards is excluded, skip remaining layers at center
                 if not include_upwards:
                     break
 

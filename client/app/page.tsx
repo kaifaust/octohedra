@@ -30,11 +30,9 @@ export default function Home() {
   // Current preset (for the selector)
   const [selectedPreset, setSelectedPreset] = useState<PresetType>('flake');
 
-  // Recipe state (layers + six_way + grid params) - initialized from preset on load
+  // Recipe state (layers + six_way) - initialized from preset on load
   const [layers, setLayers] = useState<Layer[] | null>(null);
   const [sixWay, setSixWay] = useState(false);
-  const [gridDepth, setGridDepth] = useState<number | undefined>(undefined);
-  const [gridMinDepth, setGridMinDepth] = useState<number | undefined>(undefined);
 
   // Track if recipe has been modified from preset
   const [isModified, setIsModified] = useState(false);
@@ -63,13 +61,9 @@ export default function Home() {
       if (recipe) {
         setLayers(recipe.layers);
         setSixWay(recipe.six_way || false);
-        setGridDepth(recipe.grid_depth);
-        setGridMinDepth(recipe.grid_min_depth);
         generate({
           layers: recipe.layers,
           six_way: recipe.six_way,
-          grid_depth: recipe.grid_depth,
-          grid_min_depth: recipe.grid_min_depth,
         });
       }
     });
@@ -82,15 +76,11 @@ export default function Home() {
     if (recipe) {
       setLayers(recipe.layers);
       setSixWay(recipe.six_way || false);
-      setGridDepth(recipe.grid_depth);
-      setGridMinDepth(recipe.grid_min_depth);
       setIsModified(false);
       // Generate immediately with the loaded recipe
       generate({
         layers: recipe.layers,
         six_way: recipe.six_way,
-        grid_depth: recipe.grid_depth,
-        grid_min_depth: recipe.grid_min_depth,
       });
     }
   }, [fetchPresetRecipe, generate]);
@@ -98,18 +88,6 @@ export default function Home() {
   // Handle recipe changes (mark as modified)
   const handleLayersChange = useCallback((newLayers: Layer[]) => {
     setLayers(newLayers);
-    setIsModified(true);
-  }, []);
-
-  // Handle grid depth change
-  const handleGridDepthChange = useCallback((value: number | undefined) => {
-    setGridDepth(value);
-    setIsModified(true);
-  }, []);
-
-  // Handle grid min depth change
-  const handleGridMinDepthChange = useCallback((value: number) => {
-    setGridMinDepth(value);
     setIsModified(true);
   }, []);
 
@@ -125,13 +103,11 @@ export default function Home() {
       generate({
         layers,
         six_way: sixWay,
-        grid_depth: gridDepth,
-        grid_min_depth: gridMinDepth,
       });
     }, 300); // 300ms debounce
 
     return () => clearTimeout(timer);
-  }, [layers, sixWay, gridDepth, gridMinDepth, generate]);
+  }, [layers, sixWay, generate]);
 
   // Mark initial load as done after first generation
   useEffect(() => {
@@ -218,65 +194,6 @@ export default function Home() {
 
               <Separator />
 
-              {/* Grid expansion controls */}
-              <div className="space-y-2">
-                <div className="flex items-center justify-between">
-                  <Label htmlFor="grid-toggle" className="text-sm">Grid Expansion</Label>
-                  <Toggle
-                    id="grid-toggle"
-                    pressed={gridDepth !== undefined}
-                    onPressedChange={(pressed) => handleGridDepthChange(pressed ? 4 : undefined)}
-                    size="sm"
-                  >
-                    {gridDepth !== undefined ? 'On' : 'Off'}
-                  </Toggle>
-                </div>
-                {gridDepth !== undefined && (
-                  <div className="grid grid-cols-2 gap-2">
-                    <div className="space-y-1">
-                      <Label className="text-xs text-muted-foreground">Grid Depth</Label>
-                      <div className="flex gap-1">
-                        {[2, 3, 4, 5].map((d) => (
-                          <Button
-                            key={d}
-                            variant={gridDepth === d ? 'default' : 'secondary'}
-                            size="sm"
-                            className="flex-1 h-7 text-xs"
-                            onClick={() => handleGridDepthChange(d)}
-                          >
-                            {d}
-                          </Button>
-                        ))}
-                      </div>
-                    </div>
-                    <div className="space-y-1">
-                      <Label className="text-xs text-muted-foreground">Min Depth</Label>
-                      <div className="flex gap-1">
-                        {[1, 2, 3, 4].map((d) => (
-                          <Button
-                            key={d}
-                            variant={gridMinDepth === d ? 'default' : 'secondary'}
-                            size="sm"
-                            className="flex-1 h-7 text-xs"
-                            onClick={() => handleGridMinDepthChange(d)}
-                            disabled={gridDepth !== undefined && d >= gridDepth}
-                          >
-                            {d}
-                          </Button>
-                        ))}
-                      </div>
-                    </div>
-                  </div>
-                )}
-                {gridDepth !== undefined && (
-                  <p className="text-xs text-muted-foreground">
-                    Creates a 2D grid of towers, recursively expanding in 4 directions.
-                  </p>
-                )}
-              </div>
-
-              <Separator />
-
               {/* Recipe builder - always shown */}
               {layers && layers.length > 0 && (
                 <RecipeBuilder
@@ -319,7 +236,7 @@ export default function Home() {
                     onClick={async () => {
                       if (!layers) return;
                       try {
-                        const blob = await downloadStl({ layers, six_way: sixWay, grid_depth: gridDepth, grid_min_depth: gridMinDepth }, config.value);
+                        const blob = await downloadStl({ layers, six_way: sixWay }, config.value);
                         const url = URL.createObjectURL(blob);
                         const a = document.createElement('a');
                         a.href = url;

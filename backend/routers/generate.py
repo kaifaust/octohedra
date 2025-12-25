@@ -23,29 +23,60 @@ PresetType = Literal["flake", "tower", "evil_tower", "flower", "temple_complex"]
 # - upwards: continue building central stack (+z)
 BranchDirection = Literal["outwards", "inwards", "sideways", "upwards"]
 
-# Branch styles - how sub-structures are built
-# - evil: Sub-towers at waist, simple tower (no further branching) - EvilTowerX style
-# - flower: Sub-towers at edge, recursive branching continues - FlowerTower style
-BranchStyle = Literal["evil", "flower"]
+# Branch styles - how sub-structures are built (geometry)
+# - waist: Sub-towers at waist (narrower point) - EvilTowerX style
+# - edge: Sub-towers at edge (full extent) - FlowerTower style
+BranchStyle = Literal["waist", "edge"]
+
+# Spawn directions - where sub-structures appear horizontally
+SpawnDirection = Literal["out", "in", "side"]
 
 class Layer(BaseModel):
-    """A single layer in the recipe - the fundamental building block."""
-    depth: int = Field(default=3, ge=1, le=5, description="Recursion depth (1-5), controls size and complexity")
+    """A single layer in the recipe - the fundamental building block.
+
+    In the OG project, this corresponds to one 'iteration' level in a tower.
+
+    New generative model:
+    - size: How big this layer is (1-5)
+    - spawn: Where to create sub-structures horizontally (out/in/side)
+    - bloom: Do spawns continue the branching pattern? (recursive like Flower)
+    - echo: Do spawns contain the full recipe at smaller scale? (like Temple Complex)
+    """
+    # Size of this layer (1-5)
+    depth: int = Field(default=3, ge=1, le=5, description="Iteration size (1-5), controls size and complexity")
+
+    # Shape - how octahedra branch internally
     shape: LayerShape | None = Field(
         default=None,
         description="How octahedra branch at each level. Default: 'fractal'"
     )
-    attach_next_at: int | None = Field(
-        default=None, ge=1, le=5,
-        description="Next layer attaches at this depth level (default: top)"
+
+    # Spawn - where to create sub-structures (new unified model)
+    spawn: list[SpawnDirection] | None = Field(
+        default=None,
+        description="Where to spawn sub-structures: 'out' (away), 'in' (toward parent), 'side' (perpendicular)"
     )
+
+    # Bloom - spawns continue the branching pattern recursively (like Flower)
+    bloom: bool = Field(
+        default=False,
+        description="Do spawns continue the branching pattern? (recursive like Flower)"
+    )
+
+    # Echo - spawns contain the full recipe at smaller scale (like Temple Complex)
+    echo: bool = Field(
+        default=False,
+        description="Do spawns contain the full recipe at reduced scale? (like Temple Complex)"
+    )
+
+    # Legacy fields for backwards compatibility
     branch_directions: list[BranchDirection] | None = Field(
         default=None,
-        description="Which directions to spawn sub-towers (empty/null = no branching)"
+        description="[DEPRECATED] Use 'spawn' instead. Which directions to spawn sub-towers"
     )
     branch_style: BranchStyle | None = Field(
         default=None,
-        description="How sub-structures are built. 'evil': waist towers (default), 'flower': edge recursive"
+        description="[DEPRECATED] Use 'bloom' instead. Where sub-structures attach"
     )
 
 
@@ -74,9 +105,9 @@ class GenerateRequest(BaseModel):
     # Six-way mirroring (for star-like shapes)
     six_way: bool = Field(default=False, description="Apply six-way mirroring")
 
-    # Grid expansion - enables 2D grid of towers (works with any recipe)
-    grid_depth: int | None = Field(default=None, ge=2, le=5, description="Grid expansion depth (enables 2D grid of towers)")
-    grid_min_depth: int = Field(default=2, ge=1, le=4, description="Stop grid expansion at this depth")
+    # Legacy grid expansion - prefer using 'echo' in layers instead
+    grid_depth: int | None = Field(default=None, ge=2, le=5, description="[DEPRECATED] Use 'echo' in layers. Grid expansion depth")
+    grid_min_depth: int = Field(default=2, ge=1, le=4, description="[DEPRECATED] Use 'echo' in layers. Stop grid expansion at this depth")
 
     # Render config
     config: str = Field(default="rainbow_speed", description="Render config preset")
@@ -86,15 +117,14 @@ class GenerateRequest(BaseModel):
 async def generate(request: GenerateRequest):
     """Generate a fractal using the recipe system.
 
-    ## Recipe System
+    ## Layer Model
 
-    Each layer is a recursive octahedral structure with:
-    - `depth`: Size/complexity (1-5). Higher = more detail and larger.
-    - `shape`: How octahedra branch at each level:
-      - `fractal`: All 6 directions (±x, ±y, ±z) - classic fractal
-      - `solid`: Fill solid, no recursion
-    - `attach_next_at`: Which depth level the next layer attaches to
-    - `branch_directions`: Spawn sub-structures in these directions
+    Each layer describes a recursive octahedral structure:
+    - `depth`: Size (1-5). Higher = larger and more complex.
+    - `shape`: How octahedra branch internally ('fractal' or 'solid')
+    - `spawn`: Where to create sub-structures ('out', 'in', 'side')
+    - `bloom`: Do spawns continue branching? (recursive like Flower)
+    - `echo`: Do spawns contain full recipe at smaller scale? (like Temple Complex)
 
     ## Examples
 
@@ -112,9 +142,31 @@ async def generate(request: GenerateRequest):
     ]}
     ```
 
-    Use a preset:
+    Evil Tower (tower with spawns, no bloom):
     ```json
-    {"preset": "tower", "depth": 4, "stack_height": 3}
+    {"layers": [
+        {"depth": 3, "spawn": ["out", "in", "side"]},
+        {"depth": 2, "spawn": ["out", "in", "side"]},
+        {"depth": 1}
+    ]}
+    ```
+
+    Flower (tower with blooming spawns):
+    ```json
+    {"layers": [
+        {"depth": 4, "spawn": ["out", "side"], "bloom": true},
+        {"depth": 3, "spawn": ["out", "side"], "bloom": true},
+        {"depth": 2}
+    ]}
+    ```
+
+    Temple Complex (tower with echoing spawns):
+    ```json
+    {"layers": [
+        {"depth": 4, "spawn": ["out", "in", "side"], "echo": true},
+        {"depth": 3, "spawn": ["out", "in", "side"]},
+        {"depth": 2}
+    ]}
     ```
     """
     # Convert Pydantic models to dicts

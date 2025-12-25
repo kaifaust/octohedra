@@ -2,10 +2,11 @@
 
 import { useCallback } from 'react';
 import { Plus, X, ChevronDown, ChevronUp, Copy } from 'lucide-react';
-import { Layer, LayerShape, BranchDirection, BranchStyle, LAYER_SHAPE_OPTIONS, BRANCH_DIRECTION_OPTIONS, BRANCH_STYLE_OPTIONS } from '@/lib/api';
+import { Layer, LayerShape, SpawnDirection, LAYER_SHAPE_OPTIONS, SPAWN_DIRECTION_OPTIONS } from '@/lib/api';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
+import { Toggle } from '@/components/ui/toggle';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 
 interface RecipeBuilderProps {
@@ -54,18 +55,14 @@ export function RecipeBuilder({
     const clonedLayer: Layer = {
       depth: layerToClone.depth,
       ...(layerToClone.shape && { shape: layerToClone.shape }),
-      ...(layerToClone.attach_next_at !== undefined && { attach_next_at: layerToClone.attach_next_at }),
-      ...(layerToClone.branch_directions && { branch_directions: [...layerToClone.branch_directions] }),
-      ...(layerToClone.branch_style && { branch_style: layerToClone.branch_style }),
+      ...(layerToClone.spawn && { spawn: [...layerToClone.spawn] }),
+      ...(layerToClone.bloom && { bloom: layerToClone.bloom }),
+      ...(layerToClone.echo && { echo: layerToClone.echo }),
     };
     const newLayers = [...layers];
     newLayers.splice(index + 1, 0, clonedLayer);
     onLayersChange(newLayers);
   }, [layers, onLayersChange]);
-
-  // Generate attach point options for a layer (1 to depth)
-  const getAttachOptions = (layerDepth: number) =>
-    Array.from({ length: layerDepth }, (_, i) => i + 1);
 
   return (
     <div className="space-y-3">
@@ -82,11 +79,7 @@ export function RecipeBuilder({
 
       {/* Layers */}
       <div className="space-y-3">
-        {layers.map((layer, index) => {
-          const attachOptions = getAttachOptions(layer.depth);
-          const currentAttach = layer.attach_next_at ?? layer.depth; // Default to top
-
-          return (
+        {layers.map((layer, index) => (
             <div key={index} className="bg-muted/50 p-3 rounded-lg border border-border/50 space-y-3">
               {/* Layer header */}
               <div className="flex items-center justify-between">
@@ -136,9 +129,9 @@ export function RecipeBuilder({
                 </div>
               </div>
 
-              {/* Depth selector */}
+              {/* Size selector */}
               <div className="flex items-center gap-2">
-                <Label className="text-xs w-12">Depth</Label>
+                <Label className="text-xs w-12">Size</Label>
                 <div className="flex gap-1">
                   {[1, 2, 3, 4, 5].map((d) => (
                     <Button
@@ -182,55 +175,26 @@ export function RecipeBuilder({
                 </ToggleGroup>
               </div>
 
-              {/* Attach point selector (only show if not the last layer) */}
-              {index < layers.length - 1 && (
-                <div className="flex items-center gap-2">
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <Label className="text-xs w-12 cursor-help">Attach</Label>
-                    </TooltipTrigger>
-                    <TooltipContent>
-                      <p>Next layer attaches at this depth level</p>
-                    </TooltipContent>
-                  </Tooltip>
-                  <div className="flex gap-1">
-                    {attachOptions.map((d) => (
-                      <Button
-                        key={d}
-                        variant={currentAttach === d ? "default" : "outline"}
-                        size="sm"
-                        className="h-6 w-6 p-0 text-xs"
-                        onClick={() => updateLayer(index, { attach_next_at: d })}
-                      >
-                        {d}
-                      </Button>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {/* Branch directions */}
+              {/* Spawn directions */}
               <div className="flex items-center gap-2">
                 <Tooltip>
                   <TooltipTrigger asChild>
-                    <Label className="text-xs w-12 cursor-help">Branch</Label>
+                    <Label className="text-xs w-12 cursor-help">Spawn</Label>
                   </TooltipTrigger>
                   <TooltipContent>
-                    <p>Spawn sub-structures in these directions</p>
+                    <p>Where to create sub-structures horizontally</p>
                   </TooltipContent>
                 </Tooltip>
                 <ToggleGroup
                   type="multiple"
-                  value={layer.branch_directions || ['upwards']}
+                  value={layer.spawn || []}
                   onValueChange={(value) => {
-                    // Require at least one selection - if empty, keep current value
-                    if (value.length === 0) return;
-                    updateLayer(index, { branch_directions: value as BranchDirection[] });
+                    updateLayer(index, { spawn: value.length > 0 ? value as SpawnDirection[] : undefined });
                   }}
                   variant="outline"
                   className="justify-start"
                 >
-                  {BRANCH_DIRECTION_OPTIONS.map((opt) => (
+                  {SPAWN_DIRECTION_OPTIONS.map((opt) => (
                     <ToggleGroupItem
                       key={opt.value}
                       value={opt.value}
@@ -244,45 +208,54 @@ export function RecipeBuilder({
                 </ToggleGroup>
               </div>
 
-              {/* Branch style - only show when there are horizontal branches */}
-              {layer.branch_directions && layer.branch_directions.some(d => d !== 'upwards') && (
-                <div className="flex items-center gap-2">
+              {/* Bloom and Echo - only show when spawns are enabled */}
+              {layer.spawn && layer.spawn.length > 0 && (
+                <div className="flex items-center gap-4">
                   <Tooltip>
                     <TooltipTrigger asChild>
-                      <Label className="text-xs w-12 cursor-help">Style</Label>
+                      <div className="flex items-center gap-2">
+                        <Label className="text-xs cursor-help">Bloom</Label>
+                        <Toggle
+                          pressed={layer.bloom || false}
+                          onPressedChange={(pressed) => {
+                            updateLayer(index, { bloom: pressed, echo: pressed ? false : layer.echo });
+                          }}
+                          size="sm"
+                          className="h-6 text-xs data-[state=on]:bg-primary data-[state=on]:text-primary-foreground"
+                        >
+                          {layer.bloom ? 'On' : 'Off'}
+                        </Toggle>
+                      </div>
                     </TooltipTrigger>
                     <TooltipContent>
-                      <p>How sub-structures are built</p>
+                      <p>Spawns continue branching recursively (like Flower)</p>
                     </TooltipContent>
                   </Tooltip>
-                  <ToggleGroup
-                    type="single"
-                    value={layer.branch_style || 'evil'}
-                    onValueChange={(value) => {
-                      if (value) {
-                        updateLayer(index, { branch_style: value as BranchStyle });
-                      }
-                    }}
-                    variant="outline"
-                    className="justify-start"
-                  >
-                    {BRANCH_STYLE_OPTIONS.map((opt) => (
-                      <ToggleGroupItem
-                        key={opt.value}
-                        value={opt.value}
-                        size="sm"
-                        className="text-xs px-2 h-6 data-[state=on]:bg-primary data-[state=on]:text-primary-foreground"
-                        title={opt.description}
-                      >
-                        {opt.label}
-                      </ToggleGroupItem>
-                    ))}
-                  </ToggleGroup>
+
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <div className="flex items-center gap-2">
+                        <Label className="text-xs cursor-help">Echo</Label>
+                        <Toggle
+                          pressed={layer.echo || false}
+                          onPressedChange={(pressed) => {
+                            updateLayer(index, { echo: pressed, bloom: pressed ? false : layer.bloom });
+                          }}
+                          size="sm"
+                          className="h-6 text-xs data-[state=on]:bg-primary data-[state=on]:text-primary-foreground"
+                        >
+                          {layer.echo ? 'On' : 'Off'}
+                        </Toggle>
+                      </div>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      <p>Spawns contain full recipe at smaller scale (like Temple Complex)</p>
+                    </TooltipContent>
+                  </Tooltip>
                 </div>
               )}
             </div>
-          );
-        })}
+        ))}
       </div>
     </div>
   );

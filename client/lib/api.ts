@@ -6,13 +6,24 @@ const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8001';
 
 export type LayerShape = 'fractal' | 'solid';
 export type PresetType = 'flake' | 'tower' | 'evil_tower' | 'flower' | 'temple_complex';
+
+// New spawn model
+export type SpawnDirection = 'out' | 'in' | 'side';
+
+// Legacy types (for backwards compatibility)
 export type BranchDirection = 'outwards' | 'inwards' | 'sideways' | 'upwards';
-export type BranchStyle = 'evil' | 'flower';
+export type BranchStyle = 'waist' | 'edge';
 
 export interface Layer {
   depth: number;
   shape?: LayerShape;
-  attach_next_at?: number;
+
+  // New spawn model
+  spawn?: SpawnDirection[];
+  bloom?: boolean;  // Do spawns continue branching?
+  echo?: boolean;   // Do spawns contain full recipe at smaller scale?
+
+  // Legacy (for backwards compatibility)
   branch_directions?: BranchDirection[];
   branch_style?: BranchStyle;
 }
@@ -51,7 +62,14 @@ export const LAYER_SHAPE_OPTIONS: { value: LayerShape; label: string; descriptio
   { value: 'solid', label: 'Solid', description: 'Fill solid with no fractal recursion' },
 ];
 
-// Branch direction options for the recipe builder
+// Spawn direction options for the recipe builder
+export const SPAWN_DIRECTION_OPTIONS: { value: SpawnDirection; label: string; description: string }[] = [
+  { value: 'out', label: 'Out', description: 'Away from parent direction' },
+  { value: 'in', label: 'In', description: 'Back toward parent' },
+  { value: 'side', label: 'Side', description: 'Perpendicular to parent' },
+];
+
+// Legacy: Branch direction options (for backwards compatibility)
 export const BRANCH_DIRECTION_OPTIONS: { value: BranchDirection; label: string; description: string }[] = [
   { value: 'upwards', label: 'Up', description: 'Continue building central stack (+z)' },
   { value: 'outwards', label: 'Out', description: 'Away from parent direction' },
@@ -59,10 +77,10 @@ export const BRANCH_DIRECTION_OPTIONS: { value: BranchDirection; label: string; 
   { value: 'sideways', label: 'Side', description: 'Perpendicular to parent' },
 ];
 
-// Branch style options for the recipe builder
+// Legacy: Branch style options (for backwards compatibility)
 export const BRANCH_STYLE_OPTIONS: { value: BranchStyle; label: string; description: string }[] = [
-  { value: 'evil', label: 'Evil', description: 'Sub-towers at waist, simple towers (no recursion)' },
-  { value: 'flower', label: 'Flower', description: 'Sub-towers at edge, recursive branching' },
+  { value: 'waist', label: 'Waist', description: 'Sub-towers at narrower point (simple, no recursion)' },
+  { value: 'edge', label: 'Edge', description: 'Sub-towers at outer extent (recursive)' },
 ];
 
 // Print config options for STL export
