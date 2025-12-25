@@ -47,7 +47,8 @@ export default function Home() {
   const [selectedPreset, setSelectedPreset] = useState<PresetType | null>(null);
   const [isModified, setIsModified] = useState(false);
   const [autoRotate, setAutoRotate] = useState(true);
-  const [drawerOpen, setDrawerOpen] = useState(true);
+  // Default to closed - will open on desktop via useEffect
+  const [drawerOpen, setDrawerOpen] = useState(false);
   const [shareTooltip, setShareTooltip] = useState<'idle' | 'copied'>('idle');
 
   const { objData, fileSize, isLoading, error, generate, fetchPresetRecipe } = useFractalGeneration();
@@ -63,12 +64,19 @@ export default function Home() {
   useUrlSync(urlState, initState === 'ready');
 
   // Set viewport height CSS variable for mobile compatibility
+  // Also open drawer by default on desktop
   useEffect(() => {
     const setVH = () => {
       document.documentElement.style.setProperty('--vh', `${window.innerHeight * 0.01}px`);
     };
     setVH();
     window.addEventListener('resize', setVH);
+
+    // Open drawer by default on desktop only
+    if (window.matchMedia('(min-width: 768px)').matches) {
+      setDrawerOpen(true);
+    }
+
     return () => window.removeEventListener('resize', setVH);
   }, []);
 
@@ -271,6 +279,94 @@ export default function Home() {
     </div>
   );
 
+  // File info bar content - shared between positions
+  const fileInfoBar = fileSize && (
+    <div className="flex items-center gap-2 text-xs text-white/70 bg-black/30 px-2 py-1 rounded backdrop-blur-sm">
+      <span>{fileSize}</span>
+      {objData && (
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <button
+              className="hover:text-white transition-colors"
+              title="Download STL"
+            >
+              <Download className="h-3 w-3" />
+            </button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" side="top">
+            <DropdownMenuLabel>Download STL</DropdownMenuLabel>
+            <DropdownMenuSeparator />
+            {PRINT_CONFIG_OPTIONS.map((config) => (
+              <DropdownMenuItem
+                key={config.value}
+                onClick={async () => {
+                  if (!layers) return;
+                  try {
+                    const blob = await downloadStl({ layers, six_way: sixWay }, config.value);
+                    const url = URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = `octohedra-${config.value}.stl`;
+                    a.click();
+                    URL.revokeObjectURL(url);
+                  } catch (e) {
+                    console.error('STL download failed:', e);
+                  }
+                }}
+              >
+                <div className="flex flex-col">
+                  <span className="font-medium">{config.label}</span>
+                  <span className="text-xs text-muted-foreground">{config.description}</span>
+                </div>
+              </DropdownMenuItem>
+            ))}
+          </DropdownMenuContent>
+        </DropdownMenu>
+      )}
+      <span className="mx-1 text-white/30">|</span>
+      <Dialog>
+        <DialogTrigger asChild>
+          <button
+            className="hover:text-white transition-colors flex items-center gap-1"
+            title="Credits"
+          >
+            <Info className="h-3 w-3" />
+            <span>Credits</span>
+          </button>
+        </DialogTrigger>
+        <DialogContent className="bg-card/95 backdrop-blur-sm border-border/50">
+          <DialogHeader>
+            <DialogTitle>Credits</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 text-sm">
+            <p>
+              Octohedra is an open source fractal geometry generator.
+            </p>
+            <div className="space-y-2">
+              <div>
+                <span className="font-medium">Jamie</span> - Fractal engine
+              </div>
+              <div>
+                <span className="font-medium">Kai</span> - Web application
+              </div>
+            </div>
+            <Separator />
+            <div>
+              <a
+                href="https://github.com/kaifaust/octohedra"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-primary hover:underline"
+              >
+                View on GitHub
+              </a>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+    </div>
+  );
+
   return (
     <main className="relative w-full h-dvh overflow-hidden">
       <FractalViewer objData={objData} autoRotate={autoRotate} onAutoRotateChange={setAutoRotate} />
@@ -338,92 +434,10 @@ export default function Home() {
       </div>
 
       {/* File size display, download button, and credits */}
-      {fileSize && (
-        <div className="absolute bottom-4 md:bottom-4 right-4 flex items-center gap-2 text-xs text-white/70 bg-black/30 px-2 py-1 rounded backdrop-blur-sm z-50">
-          <span>{fileSize}</span>
-          {objData && (
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <button
-                  className="hover:text-white transition-colors"
-                  title="Download STL"
-                >
-                  <Download className="h-3 w-3" />
-                </button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" side="top" className="z-50">
-                <DropdownMenuLabel>Download STL</DropdownMenuLabel>
-                <DropdownMenuSeparator />
-                {PRINT_CONFIG_OPTIONS.map((config) => (
-                  <DropdownMenuItem
-                    key={config.value}
-                    onClick={async () => {
-                      if (!layers) return;
-                      try {
-                        const blob = await downloadStl({ layers, six_way: sixWay }, config.value);
-                        const url = URL.createObjectURL(blob);
-                        const a = document.createElement('a');
-                        a.href = url;
-                        a.download = `octohedra-${config.value}.stl`;
-                        a.click();
-                        URL.revokeObjectURL(url);
-                      } catch (e) {
-                        console.error('STL download failed:', e);
-                      }
-                    }}
-                  >
-                    <div className="flex flex-col">
-                      <span className="font-medium">{config.label}</span>
-                      <span className="text-xs text-muted-foreground">{config.description}</span>
-                    </div>
-                  </DropdownMenuItem>
-                ))}
-              </DropdownMenuContent>
-            </DropdownMenu>
-          )}
-          <span className="mx-1 text-white/30">|</span>
-          <Dialog>
-            <DialogTrigger asChild>
-              <button
-                className="hover:text-white transition-colors flex items-center gap-1"
-                title="Credits"
-              >
-                <Info className="h-3 w-3" />
-                <span>Credits</span>
-              </button>
-            </DialogTrigger>
-            <DialogContent className="bg-card/95 backdrop-blur-sm border-border/50 z-50">
-              <DialogHeader>
-                <DialogTitle>Credits</DialogTitle>
-              </DialogHeader>
-              <div className="space-y-4 text-sm">
-                <p>
-                  Octohedra is an open source fractal geometry generator.
-                </p>
-                <div className="space-y-2">
-                  <div>
-                    <span className="font-medium">Jamie</span> - Fractal engine
-                  </div>
-                  <div>
-                    <span className="font-medium">Kai</span> - Web application
-                  </div>
-                </div>
-                <Separator />
-                <div>
-                  <a
-                    href="https://github.com/kaifaust/octohedra"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-primary hover:underline"
-                  >
-                    View on GitHub
-                  </a>
-                </div>
-              </div>
-            </DialogContent>
-          </Dialog>
-        </div>
-      )}
+      {/* Mobile: top-right, Desktop: bottom-right */}
+      <div className="absolute top-4 right-4 md:top-auto md:bottom-4">
+        {fileInfoBar}
+      </div>
     </main>
   );
 }
