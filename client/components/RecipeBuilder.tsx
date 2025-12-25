@@ -151,11 +151,10 @@ export function RecipeBuilder({
               <div className="flex items-center gap-2">
                 <Label className="text-xs w-12">Shape</Label>
                 <ToggleGroup
-                  type="single"
-                  value={layer.shape || 'fractal'}
+                  value={[layer.shape || 'fractal']}
                   onValueChange={(value) => {
-                    if (value) {
-                      updateLayer(index, { shape: value as LayerShape });
+                    if (value.length > 0) {
+                      updateLayer(index, { shape: value[0] as LayerShape });
                     }
                   }}
                   variant="outline"
@@ -166,7 +165,7 @@ export function RecipeBuilder({
                       key={opt.value}
                       value={opt.value}
                       size="sm"
-                      className="text-xs px-2 h-6 data-[state=on]:bg-primary data-[state=on]:text-primary-foreground"
+                      className="text-xs px-2 h-6 data-[pressed]:bg-primary data-[pressed]:text-primary-foreground"
                       title={opt.description}
                     >
                       {opt.label}
@@ -178,15 +177,15 @@ export function RecipeBuilder({
               {/* Spawn directions */}
               <div className="flex items-center gap-2">
                 <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Label className="text-xs w-12 cursor-help">Spawn</Label>
+                  <TooltipTrigger render={<Label className="text-xs w-12 cursor-help" />}>
+                    Spawn
                   </TooltipTrigger>
                   <TooltipContent>
                     <p>Where to create sub-structures horizontally</p>
                   </TooltipContent>
                 </Tooltip>
                 <ToggleGroup
-                  type="multiple"
+                  multiple
                   value={layer.spawn || []}
                   onValueChange={(value) => {
                     updateLayer(index, { spawn: value.length > 0 ? value as SpawnDirection[] : undefined });
@@ -199,7 +198,7 @@ export function RecipeBuilder({
                       key={opt.value}
                       value={opt.value}
                       size="sm"
-                      className="text-xs px-2 h-6 data-[state=on]:bg-primary data-[state=on]:text-primary-foreground"
+                      className="text-xs px-2 h-6 data-[pressed]:bg-primary data-[pressed]:text-primary-foreground"
                       title={opt.description}
                     >
                       {opt.label}
@@ -212,20 +211,18 @@ export function RecipeBuilder({
               {layer.spawn && layer.spawn.length > 0 && (
                 <div className="flex items-center gap-4">
                   <Tooltip>
-                    <TooltipTrigger asChild>
-                      <div className="flex items-center gap-2">
-                        <Label className="text-xs cursor-help">Bloom</Label>
-                        <Toggle
-                          pressed={layer.bloom || false}
-                          onPressedChange={(pressed) => {
-                            updateLayer(index, { bloom: pressed, echo: pressed ? false : layer.echo });
-                          }}
-                          size="sm"
-                          className="h-6 text-xs data-[state=on]:bg-primary data-[state=on]:text-primary-foreground"
-                        >
-                          {layer.bloom ? 'On' : 'Off'}
-                        </Toggle>
-                      </div>
+                    <TooltipTrigger render={<div className="flex items-center gap-2" />}>
+                      <Label className="text-xs cursor-help">Bloom</Label>
+                      <Toggle
+                        pressed={layer.bloom || false}
+                        onPressedChange={(pressed) => {
+                          updateLayer(index, { bloom: pressed, echo: pressed ? false : layer.echo });
+                        }}
+                        size="sm"
+                        className="h-6 text-xs data-[pressed]:bg-primary data-[pressed]:text-primary-foreground"
+                      >
+                        {layer.bloom ? 'On' : 'Off'}
+                      </Toggle>
                     </TooltipTrigger>
                     <TooltipContent>
                       <p>Spawns continue branching recursively (like Flower)</p>
@@ -233,20 +230,18 @@ export function RecipeBuilder({
                   </Tooltip>
 
                   <Tooltip>
-                    <TooltipTrigger asChild>
-                      <div className="flex items-center gap-2">
-                        <Label className="text-xs cursor-help">Echo</Label>
-                        <Toggle
-                          pressed={layer.echo || false}
-                          onPressedChange={(pressed) => {
-                            updateLayer(index, { echo: pressed, bloom: pressed ? false : layer.bloom });
-                          }}
-                          size="sm"
-                          className="h-6 text-xs data-[state=on]:bg-primary data-[state=on]:text-primary-foreground"
-                        >
-                          {layer.echo ? 'On' : 'Off'}
-                        </Toggle>
-                      </div>
+                    <TooltipTrigger render={<div className="flex items-center gap-2" />}>
+                      <Label className="text-xs cursor-help">Echo</Label>
+                      <Toggle
+                        pressed={layer.echo || false}
+                        onPressedChange={(pressed) => {
+                          updateLayer(index, { echo: pressed, bloom: pressed ? false : layer.bloom });
+                        }}
+                        size="sm"
+                        className="h-6 text-xs data-[pressed]:bg-primary data-[pressed]:text-primary-foreground"
+                      >
+                        {layer.echo ? 'On' : 'Off'}
+                      </Toggle>
                     </TooltipTrigger>
                     <TooltipContent>
                       <p>Spawns contain full recipe at smaller scale (like Temple Complex)</p>

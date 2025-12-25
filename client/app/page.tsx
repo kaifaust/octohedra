@@ -254,23 +254,25 @@ export default function Home() {
         <span className="ml-1 hidden sm:inline">{autoRotate ? 'Animating' : 'Animate'}</span>
       </Toggle>
       <Tooltip open={shareTooltip === 'copied' ? true : undefined}>
-        <TooltipTrigger asChild>
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={(e) => {
-              e.stopPropagation();
-              handleShare();
-            }}
-            className="text-muted-foreground hover:text-foreground"
-            aria-label="Share configuration"
-          >
-            {shareTooltip === 'copied' ? (
-              <Check className="h-4 w-4 text-green-500" />
-            ) : (
-              <Share2 className="h-4 w-4" />
-            )}
-          </Button>
+        <TooltipTrigger
+          render={
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={(e) => {
+                e.stopPropagation();
+                handleShare();
+              }}
+              className="text-muted-foreground hover:text-foreground"
+              aria-label="Share configuration"
+            />
+          }
+        >
+          {shareTooltip === 'copied' ? (
+            <Check className="h-4 w-4 text-green-500" />
+          ) : (
+            <Share2 className="h-4 w-4" />
+          )}
         </TooltipTrigger>
         <TooltipContent>
           {shareTooltip === 'copied' ? 'Copied!' : 'Copy share link'}
@@ -285,13 +287,15 @@ export default function Home() {
       <span>{fileSize}</span>
       {objData && (
         <DropdownMenu modal={false}>
-          <DropdownMenuTrigger asChild>
-            <button
-              className="hover:text-white transition-colors"
-              title="Download STL"
-            >
-              <Download className="h-3 w-3" />
-            </button>
+          <DropdownMenuTrigger
+            render={
+              <button
+                className="hover:text-white transition-colors"
+                title="Download STL"
+              />
+            }
+          >
+            <Download className="h-3 w-3" />
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" side="top">
             <DropdownMenuLabel>Download STL</DropdownMenuLabel>
@@ -325,14 +329,16 @@ export default function Home() {
       )}
       <span className="mx-1 text-white/30">|</span>
       <Dialog>
-        <DialogTrigger asChild>
-          <button
-            className="hover:text-white transition-colors flex items-center gap-1"
-            title="Credits"
-          >
-            <Info className="h-3 w-3" />
-            <span>Credits</span>
-          </button>
+        <DialogTrigger
+          render={
+            <button
+              className="hover:text-white transition-colors flex items-center gap-1"
+              title="Credits"
+            />
+          }
+        >
+          <Info className="h-3 w-3" />
+          <span>Credits</span>
         </DialogTrigger>
         <DialogContent className="bg-card/95 backdrop-blur-sm border-border/50">
           <DialogHeader>
