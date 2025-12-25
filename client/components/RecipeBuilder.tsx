@@ -2,7 +2,7 @@
 
 import { useCallback } from 'react';
 import { Plus, X, ChevronDown, ChevronUp, Copy } from 'lucide-react';
-import { Layer, LayerShape, BranchDirection, LAYER_SHAPE_OPTIONS, BRANCH_DIRECTION_OPTIONS } from '@/lib/api';
+import { Layer, LayerShape, BranchDirection, BranchStyle, LAYER_SHAPE_OPTIONS, BRANCH_DIRECTION_OPTIONS, BRANCH_STYLE_OPTIONS } from '@/lib/api';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
@@ -56,6 +56,7 @@ export function RecipeBuilder({
       ...(layerToClone.shape && { shape: layerToClone.shape }),
       ...(layerToClone.attach_next_at !== undefined && { attach_next_at: layerToClone.attach_next_at }),
       ...(layerToClone.branch_directions && { branch_directions: [...layerToClone.branch_directions] }),
+      ...(layerToClone.branch_style && { branch_style: layerToClone.branch_style }),
     };
     const newLayers = [...layers];
     newLayers.splice(index + 1, 0, clonedLayer);
@@ -242,6 +243,43 @@ export function RecipeBuilder({
                   ))}
                 </ToggleGroup>
               </div>
+
+              {/* Branch style - only show when there are horizontal branches */}
+              {layer.branch_directions && layer.branch_directions.some(d => d !== 'upwards') && (
+                <div className="flex items-center gap-2">
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Label className="text-xs w-12 cursor-help">Style</Label>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      <p>How sub-structures are built</p>
+                    </TooltipContent>
+                  </Tooltip>
+                  <ToggleGroup
+                    type="single"
+                    value={layer.branch_style || 'evil'}
+                    onValueChange={(value) => {
+                      if (value) {
+                        updateLayer(index, { branch_style: value as BranchStyle });
+                      }
+                    }}
+                    variant="outline"
+                    className="justify-start"
+                  >
+                    {BRANCH_STYLE_OPTIONS.map((opt) => (
+                      <ToggleGroupItem
+                        key={opt.value}
+                        value={opt.value}
+                        size="sm"
+                        className="text-xs px-2 h-6 data-[state=on]:bg-primary data-[state=on]:text-primary-foreground"
+                        title={opt.description}
+                      >
+                        {opt.label}
+                      </ToggleGroupItem>
+                    ))}
+                  </ToggleGroup>
+                </div>
+              )}
             </div>
           );
         })}

@@ -14,7 +14,7 @@ router = APIRouter()
 LayerShape = Literal["fractal", "solid"]
 
 # Available preset names (original artist shapes only)
-PresetType = Literal["flake", "tower", "evil_tower", "flower"]
+PresetType = Literal["flake", "tower", "evil_tower", "flower", "temple_complex"]
 
 # Branch directions (relative to parent direction)
 # - outwards: away from parent (if came from +x, go -x, +y, -y)
@@ -22,6 +22,11 @@ PresetType = Literal["flake", "tower", "evil_tower", "flower"]
 # - sideways: perpendicular to parent (if came from +x, go +y, -y)
 # - upwards: continue building central stack (+z)
 BranchDirection = Literal["outwards", "inwards", "sideways", "upwards"]
+
+# Branch styles - how sub-structures are built
+# - evil: Sub-towers at waist, simple tower (no further branching) - EvilTowerX style
+# - flower: Sub-towers at edge, recursive branching continues - FlowerTower style
+BranchStyle = Literal["evil", "flower"]
 
 class Layer(BaseModel):
     """A single layer in the recipe - the fundamental building block."""
@@ -37,6 +42,10 @@ class Layer(BaseModel):
     branch_directions: list[BranchDirection] | None = Field(
         default=None,
         description="Which directions to spawn sub-towers (empty/null = no branching)"
+    )
+    branch_style: BranchStyle | None = Field(
+        default=None,
+        description="How sub-structures are built. 'evil': waist towers (default), 'flower': edge recursive"
     )
 
 
@@ -55,7 +64,7 @@ class GenerateRequest(BaseModel):
     # Preset support
     preset: PresetType | None = Field(
         default=None,
-        description="Start from a preset recipe (flake, tower, evil_tower, flower)"
+        description="Start from a preset recipe (flake, tower, evil_tower, flower, temple_complex)"
     )
 
     # Parameters for preset-based generation
@@ -64,6 +73,10 @@ class GenerateRequest(BaseModel):
 
     # Six-way mirroring (for star-like shapes)
     six_way: bool = Field(default=False, description="Apply six-way mirroring")
+
+    # Grid expansion - enables 2D grid of towers (works with any recipe)
+    grid_depth: int | None = Field(default=None, ge=2, le=5, description="Grid expansion depth (enables 2D grid of towers)")
+    grid_min_depth: int = Field(default=2, ge=1, le=4, description="Stop grid expansion at this depth")
 
     # Render config
     config: str = Field(default="rainbow_speed", description="Render config preset")
@@ -114,6 +127,8 @@ async def generate(request: GenerateRequest):
         stack_height=request.stack_height,
         config_name=request.config,
         six_way=request.six_way,
+        grid_depth=request.grid_depth,
+        grid_min_depth=request.grid_min_depth,
     )
 
     return PlainTextResponse(
@@ -136,6 +151,8 @@ async def generate_stl(request: GenerateRequest):
 
     # Resolve layers from preset if needed
     six_way = request.six_way
+    grid_depth = request.grid_depth
+    grid_min_depth = request.grid_min_depth
     if layers_dicts is None:
         if request.preset is not None:
             recipe_dict = get_preset_recipe(
@@ -145,6 +162,10 @@ async def generate_stl(request: GenerateRequest):
             )
             layers_dicts = recipe_dict["layers"]
             six_way = six_way or recipe_dict.get("six_way", False)
+            # Get grid parameters from preset
+            if grid_depth is None and recipe_dict.get("grid_depth") is not None:
+                grid_depth = recipe_dict["grid_depth"]
+                grid_min_depth = recipe_dict.get("grid_min_depth", 2)
         else:
             layers_dicts = [{"depth": request.depth}]
 
@@ -152,6 +173,8 @@ async def generate_stl(request: GenerateRequest):
         layers=layers_dicts,
         config_name=request.config,
         six_way=six_way,
+        grid_depth=grid_depth,
+        grid_min_depth=grid_min_depth,
     )
 
     return Response(
@@ -181,8 +204,15 @@ async def get_preset(preset_name: PresetType, depth: int = 3, stack_height: int 
         stack_height=stack_height,
     )
 
-    return {
+    result = {
         "preset": preset_name,
         "layers": recipe["layers"],
         "six_way": recipe.get("six_way", False),
     }
+
+    # Include grid parameters if present in the recipe
+    if recipe.get("grid_depth") is not None:
+        result["grid_depth"] = recipe["grid_depth"]
+        result["grid_min_depth"] = recipe.get("grid_min_depth", 2)
+
+    return result

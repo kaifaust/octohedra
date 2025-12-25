@@ -5,20 +5,24 @@ const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8001';
 // Types matching backend routers/generate.py
 
 export type LayerShape = 'fractal' | 'solid';
-export type PresetType = 'flake' | 'tower' | 'evil_tower' | 'flower';
+export type PresetType = 'flake' | 'tower' | 'evil_tower' | 'flower' | 'temple_complex';
 export type BranchDirection = 'outwards' | 'inwards' | 'sideways' | 'upwards';
+export type BranchStyle = 'evil' | 'flower';
 
 export interface Layer {
   depth: number;
   shape?: LayerShape;
   attach_next_at?: number;
   branch_directions?: BranchDirection[];
+  branch_style?: BranchStyle;
 }
 
 export interface Recipe {
   preset?: PresetType;
   layers: Layer[];
   six_way?: boolean;
+  grid_depth?: number;
+  grid_min_depth?: number;
 }
 
 export interface GenerateParams {
@@ -27,6 +31,8 @@ export interface GenerateParams {
   depth?: number;
   stack_height?: number;
   six_way?: boolean;
+  grid_depth?: number;
+  grid_min_depth?: number;
   config?: string;
 }
 
@@ -36,6 +42,7 @@ export const PRESETS: { value: PresetType; label: string }[] = [
   { value: 'tower', label: 'Tower' },
   { value: 'evil_tower', label: 'Evil Tower' },
   { value: 'flower', label: 'Flower' },
+  { value: 'temple_complex', label: 'Temple Complex' },
 ];
 
 // Layer shape options for the recipe builder
@@ -50,6 +57,12 @@ export const BRANCH_DIRECTION_OPTIONS: { value: BranchDirection; label: string; 
   { value: 'outwards', label: 'Out', description: 'Away from parent direction' },
   { value: 'inwards', label: 'In', description: 'Back toward parent' },
   { value: 'sideways', label: 'Side', description: 'Perpendicular to parent' },
+];
+
+// Branch style options for the recipe builder
+export const BRANCH_STYLE_OPTIONS: { value: BranchStyle; label: string; description: string }[] = [
+  { value: 'evil', label: 'Evil', description: 'Sub-towers at waist, simple towers (no recursion)' },
+  { value: 'flower', label: 'Flower', description: 'Sub-towers at edge, recursive branching' },
 ];
 
 // Print config options for STL export
@@ -100,7 +113,7 @@ export async function getPresetRecipe(
  * Download STL file for 3D printing
  */
 export async function downloadStl(
-  recipe: { layers: Layer[]; six_way?: boolean },
+  recipe: { layers: Layer[]; six_way?: boolean; grid_depth?: number; grid_min_depth?: number },
   configName: string = 'print_medium'
 ): Promise<Blob> {
   const response = await fetch(`${API_BASE}/api/v1/generate/stl`, {
@@ -109,6 +122,8 @@ export async function downloadStl(
     body: JSON.stringify({
       layers: recipe.layers,
       six_way: recipe.six_way,
+      grid_depth: recipe.grid_depth,
+      grid_min_depth: recipe.grid_min_depth,
       config: configName,
     }),
   });
