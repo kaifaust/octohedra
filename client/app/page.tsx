@@ -30,8 +30,8 @@ export default function Home() {
   // Current preset (for the selector)
   const [selectedPreset, setSelectedPreset] = useState<PresetType>('flake');
 
-  // Recipe state (layers + six_way)
-  const [layers, setLayers] = useState<Layer[]>([{ depth: 2 }]);
+  // Recipe state (layers + six_way) - initialized from preset on load
+  const [layers, setLayers] = useState<Layer[] | null>(null);
   const [sixWay, setSixWay] = useState(false);
 
   // Track if recipe has been modified from preset
@@ -96,8 +96,8 @@ export default function Home() {
 
   // Auto-generate when recipe changes (debounced)
   useEffect(() => {
-    // Skip auto-generation during initial load
-    if (!initialLoadDone.current) return;
+    // Skip auto-generation during initial load or if no layers yet
+    if (!initialLoadDone.current || !layers) return;
 
     const timer = setTimeout(() => {
       generate({
@@ -195,10 +195,12 @@ export default function Home() {
               <Separator />
 
               {/* Recipe builder */}
-              <RecipeBuilder
-                layers={layers}
-                onLayersChange={handleLayersChange}
-              />
+              {layers && (
+                <RecipeBuilder
+                  layers={layers}
+                  onLayersChange={handleLayersChange}
+                />
+              )}
 
               {/* Error display */}
               {error && (
@@ -232,6 +234,7 @@ export default function Home() {
                   <DropdownMenuItem
                     key={config.value}
                     onClick={async () => {
+                      if (!layers) return;
                       try {
                         const blob = await downloadStl({ layers, six_way: sixWay }, config.value);
                         const url = URL.createObjectURL(blob);
