@@ -40,6 +40,36 @@ function parseObjData(objData: string): { geometry: THREE.BufferGeometry | null;
   // Translate geometry so its bounding box center is at origin
   geo.translate(-center.x, -center.y, -center.z);
 
+  // Recompute bounding box after centering (for color calculation)
+  geo.computeBoundingBox();
+  const centeredBox = geo.boundingBox!;
+
+  // Add vertex colors based on Z position (rainbow from bottom to top)
+  const positions = geo.attributes.position;
+  const colors = new Float32Array(positions.count * 3);
+  const color = new THREE.Color();
+
+  const minZ = centeredBox.min.z;
+  const maxZ = centeredBox.max.z;
+  const zRange = maxZ - minZ || 1;
+
+  for (let i = 0; i < positions.count; i++) {
+    const z = positions.getZ(i);
+    // Normalize Z to 0-1 range (bottom to top)
+    const t = (z - minZ) / zRange;
+
+    // Rainbow: red (0) -> orange -> yellow -> green -> cyan -> blue -> violet (0.85)
+    // Using HSL with hue from 0 (red) to ~0.85 (violet) gives a nice rainbow
+    const hue = t * 0.85;
+    color.setHSL(hue, 0.9, 0.55);
+
+    colors[i * 3] = color.r;
+    colors[i * 3 + 1] = color.g;
+    colors[i * 3 + 2] = color.b;
+  }
+
+  geo.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+
   // Compute bounding sphere for camera distance calculation
   geo.computeBoundingSphere();
   const radius = geo.boundingSphere?.radius || 1;
@@ -62,7 +92,9 @@ function FractalModel({ objData, onRadiusChange }: { objData: string; onRadiusCh
   return (
     <mesh geometry={geometry}>
       <meshStandardMaterial
-        color="#ffffff"
+        vertexColors={true}
+        emissive="#ffffff"
+        emissiveIntensity={0.08}
         metalness={0.1}
         roughness={0.5}
         side={THREE.DoubleSide}
@@ -96,6 +128,8 @@ function SceneContent({
   const controlsRef = useRef<TrackballControlsType>(null);
   const timeRef = useRef(0);
   const wasAutoRotating = useRef(false);
+  const mainLightRef = useRef<THREE.DirectionalLight>(null);
+  const fillLightRef = useRef<THREE.DirectionalLight>(null);
 
   // Animation parameters
   const spinSpeed = 0.5; // Speed of the spin (radians per second)
@@ -141,56 +175,67 @@ function SceneContent({
       wasAutoRotating.current = true;
     } else if (!autoRotate) {
       wasAutoRotating.current = false;
-      return;
     }
 
-    timeRef.current += delta * spinSpeed;
+    if (autoRotate) {
+      timeRef.current += delta * spinSpeed;
 
-    // Rotate around the Z axis (pyramid's vertical axis from base to tip)
-    // Keep the same distance and Z height, rotate in the XY plane
-    const basePos = new THREE.Vector3().setFromSpherical(baseSpherical.current);
-    const xyDistance = Math.sqrt(basePos.x * basePos.x + basePos.y * basePos.y);
-    const baseAngle = Math.atan2(basePos.y, basePos.x);
+      // Rotate around the Z axis (pyramid's vertical axis from base to tip)
+      // Keep the same distance and Z height, rotate in the XY plane
+      const basePos = new THREE.Vector3().setFromSpherical(baseSpherical.current);
+      const xyDistance = Math.sqrt(basePos.x * basePos.x + basePos.y * basePos.y);
+      const baseAngle = Math.atan2(basePos.y, basePos.x);
 
-    const newAngle = baseAngle + timeRef.current;
-    const newX = xyDistance * Math.cos(newAngle);
-    const newY = xyDistance * Math.sin(newAngle);
+      const newAngle = baseAngle + timeRef.current;
+      const newX = xyDistance * Math.cos(newAngle);
+      const newY = xyDistance * Math.sin(newAngle);
 
-    camera.position.set(newX, newY, basePos.z);
-    camera.up.set(0, 0, 1);
-    // Look at the optical center offset point (use applied distance, not pending)
-    camera.lookAt(0, 0, -appliedCameraDistance.current * 0.08);
+      camera.position.set(newX, newY, basePos.z);
+      camera.up.set(0, 0, 1);
+      // Look at the optical center offset point (use applied distance, not pending)
+      camera.lookAt(0, 0, -appliedCameraDistance.current * 0.08);
 
-    // Update controls to match
-    controlsRef.current.update();
+      // Update controls to match
+      controlsRef.current.update();
+    }
+
+    // Update lights to follow camera (relative to camera orientation)
+    if (mainLightRef.current && fillLightRef.current) {
+      // Get camera's right and up vectors
+      const right = new THREE.Vector3();
+      const up = new THREE.Vector3();
+      camera.getWorldDirection(new THREE.Vector3());
+      right.setFromMatrixColumn(camera.matrixWorld, 0);
+      up.setFromMatrixColumn(camera.matrixWorld, 1);
+
+      // Main light: upper-right relative to camera
+      const mainLightPos = camera.position.clone()
+        .add(right.clone().multiplyScalar(10))
+        .add(up.clone().multiplyScalar(8));
+      mainLightRef.current.position.copy(mainLightPos);
+
+      // Fill light: upper-left relative to camera
+      const fillLightPos = camera.position.clone()
+        .add(right.clone().multiplyScalar(-10))
+        .add(up.clone().multiplyScalar(8));
+      fillLightRef.current.position.copy(fillLightPos);
+    }
   });
 
   return (
     <>
       <ambientLight intensity={0.1} />
-      {/* Warm light from upper-right-front */}
       <directionalLight
+        ref={mainLightRef}
         position={[10, 8, 12]}
-        intensity={0.8}
-        color="#ffaa66"
+        intensity={1}
+        color="#ffffff"
       />
-      {/* Cool light from lower-left-back */}
       <directionalLight
-        position={[-10, -6, -8]}
+        ref={fillLightRef}
+        position={[-10, -8, 12]}
         intensity={0.6}
-        color="#6699ff"
-      />
-      {/* Cool light from upper-left-front */}
-      <directionalLight
-        position={[-10, 8, 12]}
-        intensity={0.6}
-        color="#66ddff"
-      />
-      {/* Warm light from lower-right-back */}
-      <directionalLight
-        position={[10, -6, -8]}
-        intensity={0.8}
-        color="#ff8866"
+        color="#ffffff"
       />
       <Suspense fallback={null}>
         {objData && <FractalModel objData={objData} onRadiusChange={handleRadiusChange} />}
