@@ -50,7 +50,6 @@ export default function Home() {
   // Default to closed - will open on desktop via useEffect
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [shareTooltip, setShareTooltip] = useState<'idle' | 'copied'>('idle');
-  const [downloadMenuOpen, setDownloadMenuOpen] = useState(false);
 
   const { objData, fileSize, isLoading, error, generate, fetchPresetRecipe } = useFractalGeneration();
 
@@ -285,7 +284,7 @@ export default function Home() {
     <div className="flex items-center gap-2 text-xs text-white/70 bg-black/30 px-2 py-1 rounded backdrop-blur-sm">
       <span>{fileSize}</span>
       {objData && (
-        <DropdownMenu open={downloadMenuOpen} onOpenChange={setDownloadMenuOpen}>
+        <DropdownMenu modal={false}>
           <DropdownMenuTrigger asChild>
             <button
               className="hover:text-white transition-colors"
@@ -294,19 +293,13 @@ export default function Home() {
               <Download className="h-3 w-3" />
             </button>
           </DropdownMenuTrigger>
-          <DropdownMenuContent
-            align="end"
-            side="top"
-            onPointerDownOutside={() => setDownloadMenuOpen(false)}
-            onInteractOutside={() => setDownloadMenuOpen(false)}
-          >
+          <DropdownMenuContent align="end" side="top">
             <DropdownMenuLabel>Download STL</DropdownMenuLabel>
             <DropdownMenuSeparator />
             {PRINT_CONFIG_OPTIONS.map((config) => (
               <DropdownMenuItem
                 key={config.value}
                 onClick={async () => {
-                  setDownloadMenuOpen(false);
                   if (!layers) return;
                   try {
                     const blob = await downloadStl({ layers, six_way: sixWay }, config.value);
