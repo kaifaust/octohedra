@@ -62,9 +62,9 @@ function FractalModel({ objData, onRadiusChange }: { objData: string; onRadiusCh
   return (
     <mesh geometry={geometry}>
       <meshStandardMaterial
-        color="#5ce1f5"
-        metalness={0.25}
-        roughness={0.3}
+        color="#ffffff"
+        metalness={0.1}
+        roughness={0.5}
         side={THREE.DoubleSide}
       />
     </mesh>
@@ -165,58 +165,33 @@ function SceneContent({
     controlsRef.current.update();
   });
 
-  // Three-point lighting rig that follows the camera
-  const keyLightRef = useRef<THREE.DirectionalLight>(null);
-  const fillLightRef = useRef<THREE.DirectionalLight>(null);
-  const backLightRef = useRef<THREE.DirectionalLight>(null);
-
-  // Update lights to follow camera orientation each frame
-  useFrame(() => {
-    // Get camera's right and up vectors in world space
-    const right = new THREE.Vector3(1, 0, 0).applyQuaternion(camera.quaternion);
-    const up = new THREE.Vector3(0, 1, 0).applyQuaternion(camera.quaternion);
-    const forward = new THREE.Vector3(0, 0, -1).applyQuaternion(camera.quaternion);
-
-    // Key light: main light, slightly right and above camera
-    if (keyLightRef.current) {
-      const keyPos = camera.position.clone()
-        .add(right.clone().multiplyScalar(8))
-        .add(up.clone().multiplyScalar(6));
-      keyLightRef.current.position.copy(keyPos);
-      keyLightRef.current.target.position.set(0, 0, 0);
-      keyLightRef.current.target.updateMatrixWorld();
-    }
-
-    // Fill light: softer light on opposite side, slightly lower
-    if (fillLightRef.current) {
-      const fillPos = camera.position.clone()
-        .add(right.clone().multiplyScalar(-6))
-        .add(up.clone().multiplyScalar(2));
-      fillLightRef.current.position.copy(fillPos);
-      fillLightRef.current.target.position.set(0, 0, 0);
-      fillLightRef.current.target.updateMatrixWorld();
-    }
-
-    // Back/rim light: behind and above the subject relative to camera
-    if (backLightRef.current) {
-      const backPos = new THREE.Vector3(0, 0, 0)
-        .add(forward.clone().multiplyScalar(15))
-        .add(up.clone().multiplyScalar(10));
-      backLightRef.current.position.copy(backPos);
-      backLightRef.current.target.position.set(0, 0, 0);
-      backLightRef.current.target.updateMatrixWorld();
-    }
-  });
-
   return (
     <>
-      <ambientLight intensity={0.15} />
-      {/* Key light - main illumination, right and above */}
-      <directionalLight ref={keyLightRef} intensity={1.2} color="#ffffff" />
-      {/* Fill light - softer, opposite side */}
-      <directionalLight ref={fillLightRef} intensity={0.4} color="#e0e8ff" />
-      {/* Back/rim light - creates edge definition */}
-      <directionalLight ref={backLightRef} intensity={0.2} color="#fff5e0" />
+      <ambientLight intensity={0.1} />
+      {/* Warm light from upper-right-front */}
+      <directionalLight
+        position={[10, 8, 12]}
+        intensity={0.8}
+        color="#ffaa66"
+      />
+      {/* Cool light from lower-left-back */}
+      <directionalLight
+        position={[-10, -6, -8]}
+        intensity={0.6}
+        color="#6699ff"
+      />
+      {/* Cool light from upper-left-front */}
+      <directionalLight
+        position={[-10, 8, 12]}
+        intensity={0.6}
+        color="#66ddff"
+      />
+      {/* Warm light from lower-right-back */}
+      <directionalLight
+        position={[10, -6, -8]}
+        intensity={0.8}
+        color="#ff8866"
+      />
       <Suspense fallback={null}>
         {objData && <FractalModel objData={objData} onRadiusChange={handleRadiusChange} />}
       </Suspense>
