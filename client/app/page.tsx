@@ -278,7 +278,7 @@ export default function Home() {
                 </p>
                 <div className="space-y-2">
                   <div>
-                    <span className="font-medium">Jeremy</span> - Fractal engine
+                    <span className="font-medium">Jamie</span> - Fractal engine
                   </div>
                   <div>
                     <span className="font-medium">Kai</span> - Web application
