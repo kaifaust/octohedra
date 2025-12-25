@@ -15,7 +15,6 @@ import {
   DropdownMenuSeparator,
 } from '@/components/ui/dropdown-menu';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
 import { Toggle } from '@/components/ui/toggle';
 import { Label } from '@/components/ui/label';
@@ -143,34 +142,34 @@ export default function Home() {
 
       {/* Drawer panel */}
       {drawerOpen && (
-        <Card className="absolute top-4 left-4 max-h-[calc(100dvh-2rem)] flex flex-col border-border/50 bg-card/80 backdrop-blur-sm pb-0">
-          <CardHeader className="pb-2 shrink-0">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <Button
-                  variant="ghost"
-                  size="icon-sm"
-                  onClick={() => setDrawerOpen(false)}
-                  aria-label="Close panel"
-                  className="h-6 w-6 text-muted-foreground hover:text-foreground"
-                >
-                  <PanelLeftClose className="h-4 w-4" />
-                </Button>
-                <CardTitle className="text-xl">Octohedra</CardTitle>
-              </div>
-              <Toggle
-                pressed={autoRotate}
-                onPressedChange={setAutoRotate}
-                size="sm"
-                aria-label="Toggle animation"
+        <div className="absolute top-4 left-4 max-h-[calc(100dvh-2rem)] flex flex-col rounded-xl border border-border/50 bg-card/80 backdrop-blur-sm shadow-sm">
+          {/* Header */}
+          <div className="flex items-center gap-4 px-4 py-3">
+            <div className="flex items-center gap-2">
+              <Button
+                variant="ghost"
+                size="icon-sm"
+                onClick={() => setDrawerOpen(false)}
+                aria-label="Close panel"
+                className="h-6 w-6 text-muted-foreground hover:text-foreground"
               >
-                <RotateCw className={`h-4 w-4 ${autoRotate ? 'animate-spin' : ''}`} />
-                <span className="ml-1">{autoRotate ? 'Animating' : 'Animate'}</span>
-              </Toggle>
+                <PanelLeftClose className="h-4 w-4" />
+              </Button>
+              <h2 className="text-xl font-semibold">Octohedra</h2>
             </div>
-          </CardHeader>
+            <Toggle
+              pressed={autoRotate}
+              onPressedChange={setAutoRotate}
+              size="sm"
+              aria-label="Toggle animation"
+            >
+              <RotateCw className={`h-4 w-4 ${autoRotate ? 'animate-spin' : ''}`} />
+              <span className="ml-1">{autoRotate ? 'Animating' : 'Animate'}</span>
+            </Toggle>
+          </div>
 
-          <CardContent className="overflow-y-auto flex-1 min-h-0 pt-0 pb-4">
+          {/* Content */}
+          <div className="overflow-y-auto flex-1 min-h-0 px-4 pb-4">
             <div className="space-y-4">
               {/* Preset selector */}
               <div className="space-y-2">
@@ -208,8 +207,8 @@ export default function Home() {
                 </p>
               )}
             </div>
-          </CardContent>
-        </Card>
+          </div>
+        </div>
       )}
 
       {/* File size display, download button, and credits */}
