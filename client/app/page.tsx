@@ -1,10 +1,12 @@
 'use client';
 
 import { useState, useEffect, useCallback, useMemo } from 'react';
-import { RotateCw, PanelLeftClose, PanelLeftOpen, Download, Info, Share2, Check } from 'lucide-react';
+import { RotateCw, PanelLeftClose, PanelLeftOpen, Download, Info, Share2, Check, Sliders } from 'lucide-react';
 import { FractalViewer } from '@/components/FractalViewer';
 import { RecipeBuilder } from '@/components/RecipeBuilder';
+import { MobileBottomSheet } from '@/components/MobileBottomSheet';
 import { useFractalGeneration } from '@/hooks/useFractalGeneration';
+import { useIsMobile } from '@/hooks/useIsMobile';
 import { useUrlSync, getInitialUrlState, generateShareUrl, UrlState } from '@/hooks/useUrlSync';
 import { PresetType, Layer, PRESETS, downloadStl, PRINT_CONFIG_OPTIONS } from '@/lib/api';
 import {
@@ -48,6 +50,9 @@ export default function Home() {
   const [autoRotate, setAutoRotate] = useState(true);
   const [drawerOpen, setDrawerOpen] = useState(true);
   const [shareTooltip, setShareTooltip] = useState<'idle' | 'copied'>('idle');
+
+  // Mobile detection
+  const isMobile = useIsMobile();
 
   const { objData, fileSize, isLoading, error, generate, fetchPresetRecipe } = useFractalGeneration();
 
@@ -189,6 +194,87 @@ export default function Home() {
     }
   }, [layers, sixWay, autoRotate]);
 
+  // Control panel content - shared between desktop and mobile
+  const controlPanelContent = (
+    <div className="space-y-4">
+      {/* Preset selector */}
+      <div className="space-y-2">
+        <Label>Start from Preset</Label>
+        <div className="grid grid-cols-2 gap-1">
+          {PRESETS.map((preset) => (
+            <Button
+              key={preset.value}
+              variant={selectedPreset === preset.value && !isModified ? 'default' : 'secondary'}
+              size="sm"
+              onClick={() => handlePresetSelect(preset.value)}
+              className="w-full text-xs"
+            >
+              {preset.label}
+            </Button>
+          ))}
+        </div>
+        {isModified && (
+          <p className="text-xs text-primary">Recipe modified from preset</p>
+        )}
+      </div>
+
+      <Separator />
+
+      {/* Recipe builder */}
+      {layers && layers.length > 0 && (
+        <RecipeBuilder
+          layers={layers}
+          onLayersChange={handleLayersChange}
+        />
+      )}
+
+      {/* Error display */}
+      {error && (
+        <p className="text-destructive text-xs bg-destructive/10 p-2 rounded-md">
+          {error.message}
+        </p>
+      )}
+    </div>
+  );
+
+  // Header actions - shared between desktop and mobile
+  const headerActions = (
+    <div className="flex items-center gap-1">
+      <Toggle
+        pressed={autoRotate}
+        onPressedChange={setAutoRotate}
+        size="sm"
+        aria-label="Toggle animation"
+      >
+        <RotateCw className={`h-4 w-4 ${autoRotate ? 'animate-spin' : ''}`} />
+        <span className="ml-1 hidden sm:inline">{autoRotate ? 'Animating' : 'Animate'}</span>
+      </Toggle>
+      <Tooltip open={shareTooltip === 'copied' ? true : undefined}>
+        <TooltipTrigger asChild>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={(e) => {
+              e.stopPropagation();
+              handleShare();
+            }}
+            className="text-muted-foreground hover:text-foreground"
+            aria-label="Share configuration"
+          >
+            {shareTooltip === 'copied' ? (
+              <Check className="h-4 w-4 text-green-500" />
+            ) : (
+              <Share2 className="h-4 w-4" />
+            )}
+          </Button>
+        </TooltipTrigger>
+        <TooltipContent>
+          {shareTooltip === 'copied' ? 'Copied!' : 'Copy share link'}
+        </TooltipContent>
+      </Tooltip>
+    </div>
+  );
+
   return (
     <main className="relative w-full h-dvh overflow-hidden">
       <FractalViewer objData={objData} autoRotate={autoRotate} onAutoRotateChange={setAutoRotate} />
@@ -200,117 +286,66 @@ export default function Home() {
         </div>
       )}
 
-      {/* Collapsed drawer toggle button */}
-      {!drawerOpen && (
-        <Button
-          variant="secondary"
-          size="icon"
-          className="absolute top-4 left-4 bg-card/80 backdrop-blur-sm border-border/50"
-          onClick={() => setDrawerOpen(true)}
-          aria-label="Open panel"
-        >
-          <PanelLeftOpen className="h-4 w-4" />
-        </Button>
-      )}
+      {/* Desktop: Side drawer panel */}
+      {!isMobile && (
+        <>
+          {/* Collapsed drawer toggle button */}
+          {!drawerOpen && (
+            <Button
+              variant="secondary"
+              size="icon"
+              className="absolute top-4 left-4 bg-card/80 backdrop-blur-sm border-border/50"
+              onClick={() => setDrawerOpen(true)}
+              aria-label="Open panel"
+            >
+              <PanelLeftOpen className="h-4 w-4" />
+            </Button>
+          )}
 
-      {/* Drawer panel */}
-      {drawerOpen && (
-        <div className="absolute top-4 left-4 max-h-[calc(100dvh-2rem)] flex flex-col rounded-xl border border-border/50 bg-card/80 backdrop-blur-sm shadow-sm">
-          {/* Header */}
-          <div className="flex items-center gap-4 px-4 py-3">
-            <div className="flex items-center gap-2">
-              <Button
-                variant="ghost"
-                size="icon-sm"
-                onClick={() => setDrawerOpen(false)}
-                aria-label="Close panel"
-                className="h-6 w-6 text-muted-foreground hover:text-foreground"
-              >
-                <PanelLeftClose className="h-4 w-4" />
-              </Button>
-              <h2 className="text-xl font-semibold">Octohedra</h2>
-            </div>
-            <div className="flex items-center gap-1">
-              <Toggle
-                pressed={autoRotate}
-                onPressedChange={setAutoRotate}
-                size="sm"
-                aria-label="Toggle animation"
-              >
-                <RotateCw className={`h-4 w-4 ${autoRotate ? 'animate-spin' : ''}`} />
-                <span className="ml-1">{autoRotate ? 'Animating' : 'Animate'}</span>
-              </Toggle>
-              <Tooltip open={shareTooltip === 'copied' ? true : undefined}>
-                <TooltipTrigger asChild>
+          {/* Drawer panel */}
+          {drawerOpen && (
+            <div className="absolute top-4 left-4 max-h-[calc(100dvh-2rem)] flex flex-col rounded-xl border border-border/50 bg-card/80 backdrop-blur-sm shadow-sm">
+              {/* Header */}
+              <div className="flex items-center gap-4 px-4 py-3">
+                <div className="flex items-center gap-2">
                   <Button
                     variant="ghost"
-                    size="sm"
-                    onClick={handleShare}
-                    className="text-muted-foreground hover:text-foreground"
-                    aria-label="Share configuration"
+                    size="icon-sm"
+                    onClick={() => setDrawerOpen(false)}
+                    aria-label="Close panel"
+                    className="h-6 w-6 text-muted-foreground hover:text-foreground"
                   >
-                    {shareTooltip === 'copied' ? (
-                      <Check className="h-4 w-4 text-green-500" />
-                    ) : (
-                      <Share2 className="h-4 w-4" />
-                    )}
+                    <PanelLeftClose className="h-4 w-4" />
                   </Button>
-                </TooltipTrigger>
-                <TooltipContent>
-                  {shareTooltip === 'copied' ? 'Copied!' : 'Copy share link'}
-                </TooltipContent>
-              </Tooltip>
-            </div>
-          </div>
-
-          {/* Content */}
-          <div className="overflow-y-auto flex-1 min-h-0 px-4 pb-4">
-            <div className="space-y-4">
-              {/* Preset selector */}
-              <div className="space-y-2">
-                <Label>Start from Preset</Label>
-                <div className="grid grid-cols-2 gap-1">
-                  {PRESETS.map((preset) => (
-                    <Button
-                      key={preset.value}
-                      variant={selectedPreset === preset.value && !isModified ? 'default' : 'secondary'}
-                      size="sm"
-                      onClick={() => handlePresetSelect(preset.value)}
-                      className="w-full text-xs"
-                    >
-                      {preset.label}
-                    </Button>
-                  ))}
+                  <h2 className="text-xl font-semibold">Octohedra</h2>
                 </div>
-                {isModified && (
-                  <p className="text-xs text-primary">Recipe modified from preset</p>
-                )}
+                {headerActions}
               </div>
 
-              <Separator />
-
-              {/* Recipe builder */}
-              {layers && layers.length > 0 && (
-                <RecipeBuilder
-                  layers={layers}
-                  onLayersChange={handleLayersChange}
-                />
-              )}
-
-              {/* Error display */}
-              {error && (
-                <p className="text-destructive text-xs bg-destructive/10 p-2 rounded-md">
-                  {error.message}
-                </p>
-              )}
+              {/* Content */}
+              <div className="overflow-y-auto flex-1 min-h-0 px-4 pb-4">
+                {controlPanelContent}
+              </div>
             </div>
-          </div>
-        </div>
+          )}
+        </>
+      )}
+
+      {/* Mobile: Bottom sheet */}
+      {isMobile && (
+        <MobileBottomSheet
+          isOpen={drawerOpen}
+          onOpenChange={setDrawerOpen}
+          title="Octohedra"
+          headerActions={headerActions}
+        >
+          {controlPanelContent}
+        </MobileBottomSheet>
       )}
 
       {/* File size display, download button, and credits */}
       {fileSize && (
-        <div className="absolute bottom-4 right-4 flex items-center gap-2 text-xs text-white/70 bg-black/30 px-2 py-1 rounded backdrop-blur-sm">
+        <div className={`absolute ${isMobile ? 'bottom-16' : 'bottom-4'} right-4 flex items-center gap-2 text-xs text-white/70 bg-black/30 px-2 py-1 rounded backdrop-blur-sm`}>
           <span>{fileSize}</span>
           {objData && (
             <DropdownMenu>
