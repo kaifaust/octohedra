@@ -10,7 +10,6 @@ app = FastAPI(title="Octohedra API", version="1.0.0")
 # CORS origins - allow localhost for development and production domains
 cors_origins = [
     "http://localhost:3001",
-    "https://*.vercel.app",
     "https://octohedra.com",
     "https://www.octohedra.com",
 ]
@@ -19,9 +18,14 @@ cors_origins = [
 if extra_origins := os.environ.get("CORS_ORIGINS"):
     cors_origins.extend(extra_origins.split(","))
 
+# Regex pattern to match any Vercel preview deployment
+# Matches: https://*.vercel.app
+cors_origin_regex = r"https://.*\.vercel\.app"
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=cors_origins,
+    allow_origin_regex=cors_origin_regex,
     allow_credentials=True,
     allow_methods=["GET", "POST"],
     allow_headers=["*"],

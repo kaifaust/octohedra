@@ -1,10 +1,11 @@
 'use client';
 
-import { useState, useEffect, useCallback, useRef } from 'react';
-import { RotateCw, PanelLeftClose, PanelLeftOpen, Download, Info } from 'lucide-react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
+import { RotateCw, PanelLeftClose, PanelLeftOpen, Download, Info, Share2, Check } from 'lucide-react';
 import { FractalViewer } from '@/components/FractalViewer';
 import { RecipeBuilder } from '@/components/RecipeBuilder';
 import { useFractalGeneration } from '@/hooks/useFractalGeneration';
+import { useUrlSync, getInitialUrlState, generateShareUrl, UrlState } from '@/hooks/useUrlSync';
 import { PresetType, Layer, PRESETS, downloadStl, PRINT_CONFIG_OPTIONS } from '@/lib/api';
 import {
   DropdownMenu,
@@ -25,25 +26,40 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
+
+type InitState = 'pending' | 'loading' | 'ready';
 
 export default function Home() {
-  // Current preset (for the selector)
-  const [selectedPreset, setSelectedPreset] = useState<PresetType>('flake');
+  // Initialization state machine - cleaner than ref-based tracking
+  const [initState, setInitState] = useState<InitState>('pending');
 
-  // Recipe state (layers + six_way) - initialized from preset on load
+  // Recipe state (layers + six_way)
   const [layers, setLayers] = useState<Layer[] | null>(null);
   const [sixWay, setSixWay] = useState(false);
 
-  // Track if recipe has been modified from preset
+  // UI state
+  const [selectedPreset, setSelectedPreset] = useState<PresetType | null>(null);
   const [isModified, setIsModified] = useState(false);
-
-  // Camera animation toggle
   const [autoRotate, setAutoRotate] = useState(true);
-
-  // Drawer visibility
   const [drawerOpen, setDrawerOpen] = useState(true);
+  const [shareTooltip, setShareTooltip] = useState<'idle' | 'copied'>('idle');
 
   const { objData, fileSize, isLoading, error, generate, fetchPresetRecipe } = useFractalGeneration();
+
+  // Memoize URL state to prevent unnecessary re-renders
+  const urlState = useMemo<UrlState>(() => ({
+    layers: layers ?? undefined,
+    sixWay,
+    autoRotate,
+  }), [layers, sixWay, autoRotate]);
+
+  // Sync state to URL (only after initialization)
+  useUrlSync(urlState, initState === 'ready');
 
   // Set viewport height CSS variable for mobile compatibility
   useEffect(() => {
@@ -55,29 +71,81 @@ export default function Home() {
     return () => window.removeEventListener('resize', setVH);
   }, []);
 
-  // Generate default fractal on page load
+  // Initialize from URL params or default preset
   useEffect(() => {
-    fetchPresetRecipe('flake').then((recipe) => {
+    if (initState !== 'pending') return;
+
+    setInitState('loading');
+
+    const initializeFromUrl = async () => {
+      const urlParams = getInitialUrlState();
+
+      // If URL has layers, use them directly
+      if (urlParams.layers && urlParams.layers.length > 0) {
+        setLayers(urlParams.layers);
+        setSixWay(urlParams.sixWay ?? false);
+        setAutoRotate(urlParams.autoRotate ?? true);
+        setIsModified(true); // URL params are considered "modified" from any preset
+        setSelectedPreset(null);
+
+        // Generate with URL layers
+        await generate({
+          layers: urlParams.layers,
+          six_way: urlParams.sixWay ?? false,
+        });
+
+        setInitState('ready');
+        return;
+      }
+
+      // If URL has preset, load it
+      if (urlParams.preset) {
+        const recipe = await fetchPresetRecipe(urlParams.preset);
+        if (recipe) {
+          setLayers(recipe.layers);
+          setSixWay(recipe.six_way ?? false);
+          setAutoRotate(urlParams.autoRotate ?? true);
+          setSelectedPreset(urlParams.preset);
+          setIsModified(false);
+
+          await generate({
+            layers: recipe.layers,
+            six_way: recipe.six_way,
+          });
+
+          setInitState('ready');
+          return;
+        }
+      }
+
+      // Default: load flake preset
+      const recipe = await fetchPresetRecipe('flake');
       if (recipe) {
         setLayers(recipe.layers);
-        setSixWay(recipe.six_way || false);
-        generate({
+        setSixWay(recipe.six_way ?? false);
+        setSelectedPreset('flake');
+        setIsModified(false);
+
+        await generate({
           layers: recipe.layers,
           six_way: recipe.six_way,
         });
       }
-    });
-  }, [generate, fetchPresetRecipe]);
 
-  // Handle preset selection - load and generate immediately
+      setInitState('ready');
+    };
+
+    initializeFromUrl();
+  }, [initState, generate, fetchPresetRecipe]);
+
+  // Handle preset selection
   const handlePresetSelect = useCallback(async (preset: PresetType) => {
     setSelectedPreset(preset);
     const recipe = await fetchPresetRecipe(preset);
     if (recipe) {
       setLayers(recipe.layers);
-      setSixWay(recipe.six_way || false);
+      setSixWay(recipe.six_way ?? false);
       setIsModified(false);
-      // Generate immediately with the loaded recipe
       generate({
         layers: recipe.layers,
         six_way: recipe.six_way,
@@ -85,36 +153,41 @@ export default function Home() {
     }
   }, [fetchPresetRecipe, generate]);
 
-  // Handle recipe changes (mark as modified)
+  // Handle layer changes from RecipeBuilder
   const handleLayersChange = useCallback((newLayers: Layer[]) => {
     setLayers(newLayers);
     setIsModified(true);
   }, []);
 
-  // Track if initial load is done
-  const initialLoadDone = useRef(false);
-
-  // Auto-generate when recipe changes (debounced)
+  // Auto-generate when recipe changes (after initialization)
   useEffect(() => {
-    // Skip auto-generation during initial load or if no layers yet
-    if (!initialLoadDone.current || !layers) return;
+    if (initState !== 'ready' || !layers) return;
 
     const timer = setTimeout(() => {
       generate({
         layers,
         six_way: sixWay,
       });
-    }, 300); // 300ms debounce
+    }, 300);
 
     return () => clearTimeout(timer);
-  }, [layers, sixWay, generate]);
+  }, [layers, sixWay, generate, initState]);
 
-  // Mark initial load as done after first generation
-  useEffect(() => {
-    if (objData && !initialLoadDone.current) {
-      initialLoadDone.current = true;
+  // Handle share button click
+  const handleShare = useCallback(async () => {
+    if (!layers) return;
+
+    const url = generateShareUrl({ layers, sixWay, autoRotate });
+
+    try {
+      await navigator.clipboard.writeText(url);
+      setShareTooltip('copied');
+      setTimeout(() => setShareTooltip('idle'), 2000);
+    } catch {
+      // Fallback for browsers without clipboard API
+      prompt('Copy this URL to share:', url);
     }
-  }, [objData]);
+  }, [layers, sixWay, autoRotate]);
 
   return (
     <main className="relative w-full h-dvh overflow-hidden">
@@ -157,15 +230,37 @@ export default function Home() {
               </Button>
               <h2 className="text-xl font-semibold">Octohedra</h2>
             </div>
-            <Toggle
-              pressed={autoRotate}
-              onPressedChange={setAutoRotate}
-              size="sm"
-              aria-label="Toggle animation"
-            >
-              <RotateCw className={`h-4 w-4 ${autoRotate ? 'animate-spin' : ''}`} />
-              <span className="ml-1">{autoRotate ? 'Animating' : 'Animate'}</span>
-            </Toggle>
+            <div className="flex items-center gap-1">
+              <Toggle
+                pressed={autoRotate}
+                onPressedChange={setAutoRotate}
+                size="sm"
+                aria-label="Toggle animation"
+              >
+                <RotateCw className={`h-4 w-4 ${autoRotate ? 'animate-spin' : ''}`} />
+                <span className="ml-1">{autoRotate ? 'Animating' : 'Animate'}</span>
+              </Toggle>
+              <Tooltip open={shareTooltip === 'copied' ? true : undefined}>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={handleShare}
+                    className="text-muted-foreground hover:text-foreground"
+                    aria-label="Share configuration"
+                  >
+                    {shareTooltip === 'copied' ? (
+                      <Check className="h-4 w-4 text-green-500" />
+                    ) : (
+                      <Share2 className="h-4 w-4" />
+                    )}
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>
+                  {shareTooltip === 'copied' ? 'Copied!' : 'Copy share link'}
+                </TooltipContent>
+              </Tooltip>
+            </div>
           </div>
 
           {/* Content */}
@@ -194,7 +289,7 @@ export default function Home() {
 
               <Separator />
 
-              {/* Recipe builder - always shown */}
+              {/* Recipe builder */}
               {layers && layers.length > 0 && (
                 <RecipeBuilder
                   layers={layers}
