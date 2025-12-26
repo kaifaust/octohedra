@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback, useImperativeHandle, forwardRef } from 'react';
 import { ChevronRight, ChevronLeft, Loader2 } from 'lucide-react';
 import { StoredShape, listRecentShapes, Layer } from '@/lib/api';
 import { Button } from '@/components/ui/button';
@@ -11,27 +11,93 @@ interface RecentShapesPanelProps {
   onOpenChange: (open: boolean) => void;
 }
 
-export function RecentShapesPanel({ onSelectShape, isOpen, onOpenChange }: RecentShapesPanelProps) {
-  const [shapes, setShapes] = useState<StoredShape[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+export interface RecentShapesPanelHandle {
+  refresh: () => Promise<void>;
+}
+
+// Module-level state to dedupe fetches across mounts
+const fetchState = {
+  promise: null as Promise<StoredShape[]> | null,
+  data: null as StoredShape[] | null,
+};
+
+export const RecentShapesPanel = forwardRef<RecentShapesPanelHandle, RecentShapesPanelProps>(
+  function RecentShapesPanel({ onSelectShape, isOpen, onOpenChange }, ref) {
+  // Initialize from cached data if available
+  const [shapes, setShapes] = useState<StoredShape[]>(() => fetchState.data ?? []);
+  const [isLoading, setIsLoading] = useState(() => fetchState.data === null);
   const [error, setError] = useState<string | null>(null);
 
+  // Refresh function that can be called after saving a new shape
+  const refresh = useCallback(async () => {
+    try {
+      setIsLoading(true);
+      const data = await listRecentShapes(10);
+      fetchState.data = data;
+      setShapes(data);
+      setError(null);
+    } catch (err) {
+      console.error('Failed to fetch recent shapes:', err);
+      setError('Failed to load');
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
+
+  // Expose refresh to parent via ref
+  useImperativeHandle(ref, () => ({ refresh }), [refresh]);
+
   useEffect(() => {
-    async function fetchShapes() {
-      try {
-        setIsLoading(true);
-        const recentShapes = await listRecentShapes(10);
-        setShapes(recentShapes);
-        setError(null);
-      } catch (err) {
-        console.error('Failed to fetch recent shapes:', err);
-        setError('Failed to load');
-      } finally {
-        setIsLoading(false);
-      }
+    // If we already have data, don't fetch again
+    if (fetchState.data !== null) {
+      return;
     }
 
-    fetchShapes();
+    // If a fetch is already in progress, wait for it
+    if (fetchState.promise) {
+      let cancelled = false;
+      fetchState.promise
+        .then((data) => {
+          if (!cancelled) {
+            setShapes(data);
+            setIsLoading(false);
+          }
+        })
+        .catch(() => {
+          if (!cancelled) {
+            setError('Failed to load');
+            setIsLoading(false);
+          }
+        });
+      return () => { cancelled = true; };
+    }
+
+    // Start a new fetch
+    let cancelled = false;
+    fetchState.promise = listRecentShapes(10);
+
+    fetchState.promise
+      .then((data) => {
+        fetchState.data = data;
+        if (!cancelled) {
+          setShapes(data);
+          setError(null);
+        }
+      })
+      .catch((err) => {
+        console.error('Failed to fetch recent shapes:', err);
+        if (!cancelled) {
+          setError('Failed to load');
+        }
+      })
+      .finally(() => {
+        if (!cancelled) {
+          setIsLoading(false);
+        }
+        fetchState.promise = null;
+      });
+
+    return () => { cancelled = true; };
   }, []);
 
   // Don't render panel if there's an error or no shapes
@@ -97,4 +163,4 @@ export function RecentShapesPanel({ onSelectShape, isOpen, onOpenChange }: Recen
       </div>
     </div>
   );
-}
+});

@@ -1,17 +1,18 @@
 import { ImageResponse } from 'next/og';
 import { list } from '@vercel/blob';
+import { parseRecipeFromPath } from '@/lib/recipe-encoding';
 import { generateShapeId } from '@/lib/shapes';
 
 export const runtime = 'edge';
 
-export const alt = 'Octohedra - Fractal Geometry Generator';
+export const alt = 'Octohedra - Fractal Geometry';
 export const size = {
   width: 1200,
   height: 630,
 };
 export const contentType = 'image/png';
 
-// Default shape ID (3f recipe)
+// Default shape ID for fallback (3f recipe)
 const DEFAULT_SHAPE_ID = generateShapeId([{ depth: 3, shape: 'fractal' }], false);
 
 async function getScreenshotUrl(shapeId: string): Promise<string | null> {
@@ -26,10 +27,31 @@ async function getScreenshotUrl(shapeId: string): Promise<string | null> {
   }
 }
 
-export default async function Image() {
-  const screenshotUrl = await getScreenshotUrl(DEFAULT_SHAPE_ID);
+export default async function Image({
+  params,
+}: {
+  params: Promise<{ recipe: string }>;
+}) {
+  const { recipe } = await params;
+
+  // Parse the recipe from URL path
+  const parsed = parseRecipeFromPath(recipe);
+
+  let screenshotUrl: string | null = null;
+
+  if (parsed) {
+    // Generate the shape ID to look up the screenshot
+    const shapeId = generateShapeId(parsed.layers, parsed.sixWay);
+    screenshotUrl = await getScreenshotUrl(shapeId);
+  }
+
+  // If no screenshot found, try the default 3f shape
+  if (!screenshotUrl) {
+    screenshotUrl = await getScreenshotUrl(DEFAULT_SHAPE_ID);
+  }
 
   if (screenshotUrl) {
+    // Fetch the stored screenshot
     const screenshotResponse = await fetch(screenshotUrl);
     const screenshotData = await screenshotResponse.arrayBuffer();
 
@@ -62,7 +84,7 @@ export default async function Image() {
     );
   }
 
-  // Fallback: black background with text (only if no screenshot available)
+  // Final fallback: black background with text (only if no screenshots available at all)
   return new ImageResponse(
     (
       <div

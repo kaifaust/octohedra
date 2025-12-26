@@ -1,4 +1,6 @@
 import { ImageResponse } from 'next/og';
+import { list } from '@vercel/blob';
+import { generateShapeId } from '@/lib/shapes';
 
 export const runtime = 'edge';
 
@@ -9,17 +11,63 @@ export const size = {
 };
 export const contentType = 'image/png';
 
-export default async function Image() {
-  // Fetch the pre-rendered fractal image from public folder
-  const fractalImageData = await fetch(
-    new URL('../public/og-fractal.png', import.meta.url)
-  ).then((res) => res.arrayBuffer());
+// Default shape ID (3f recipe)
+const DEFAULT_SHAPE_ID = generateShapeId([{ depth: 3, shape: 'fractal' }], false);
 
+async function getScreenshotUrl(shapeId: string): Promise<string | null> {
+  try {
+    const { blobs } = await list({ prefix: `shapes/${shapeId}/` });
+    const screenshotBlob = blobs.find(
+      (b) => b.pathname.includes('/screenshot_') && b.pathname.endsWith('.png')
+    );
+    return screenshotBlob?.downloadUrl || null;
+  } catch {
+    return null;
+  }
+}
+
+export default async function Image() {
+  const screenshotUrl = await getScreenshotUrl(DEFAULT_SHAPE_ID);
+
+  if (screenshotUrl) {
+    const screenshotResponse = await fetch(screenshotUrl);
+    const screenshotData = await screenshotResponse.arrayBuffer();
+
+    return new ImageResponse(
+      (
+        <div
+          style={{
+            width: '100%',
+            height: '100%',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            backgroundColor: '#000000',
+          }}
+        >
+          <img
+            src={screenshotData as unknown as string}
+            alt=""
+            style={{
+              width: '100%',
+              height: '100%',
+              objectFit: 'contain',
+            }}
+          />
+        </div>
+      ),
+      {
+        ...size,
+      }
+    );
+  }
+
+  // Fallback: black background with text (only if no screenshot available)
   return new ImageResponse(
     (
       <div
         style={{
-          background: 'linear-gradient(135deg, #0a0a0f 0%, #1a1a2e 50%, #0f0f1a 100%)',
+          backgroundColor: '#000000',
           width: '100%',
           height: '100%',
           display: 'flex',
@@ -27,68 +75,19 @@ export default async function Image() {
           alignItems: 'center',
           justifyContent: 'center',
           fontFamily: 'system-ui, sans-serif',
-          position: 'relative',
-          overflow: 'hidden',
         }}
       >
-        {/* Pre-rendered fractal image as background */}
-        <img
-          src={fractalImageData as unknown as string}
-          alt=""
-          style={{
-            position: 'absolute',
-            width: '100%',
-            height: '100%',
-            objectFit: 'cover',
-            opacity: 0.9,
-          }}
-        />
-
-        {/* Gradient overlay for text readability */}
         <div
           style={{
-            position: 'absolute',
-            width: '100%',
-            height: '100%',
-            background: 'linear-gradient(to top, rgba(10, 10, 15, 0.95) 0%, rgba(10, 10, 15, 0.3) 50%, rgba(10, 10, 15, 0.5) 100%)',
-          }}
-        />
-
-        {/* Content container */}
-        <div
-          style={{
-            display: 'flex',
-            flexDirection: 'column',
-            alignItems: 'center',
-            position: 'absolute',
-            bottom: '80px',
+            fontSize: 72,
+            fontWeight: 700,
+            background: 'linear-gradient(90deg, #ffc4a3, #a3b5ff)',
+            backgroundClip: 'text',
+            color: 'transparent',
+            letterSpacing: '-0.02em',
           }}
         >
-          {/* Title */}
-          <div
-            style={{
-              fontSize: 72,
-              fontWeight: 700,
-              background: 'linear-gradient(90deg, #ffc4a3, #a3b5ff)',
-              backgroundClip: 'text',
-              color: 'transparent',
-              marginBottom: '16px',
-              letterSpacing: '-0.02em',
-            }}
-          >
-            Octohedra
-          </div>
-
-          {/* Tagline */}
-          <div
-            style={{
-              fontSize: 28,
-              color: 'rgba(255, 255, 255, 0.8)',
-              letterSpacing: '0.05em',
-            }}
-          >
-            Fractal Geometry Generator
-          </div>
+          Octohedra
         </div>
       </div>
     ),

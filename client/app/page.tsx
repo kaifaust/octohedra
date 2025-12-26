@@ -1,13 +1,14 @@
 'use client';
 
-import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
+import { useRouter } from 'next/navigation';
 import { RotateCw, PanelLeftClose, PanelLeftOpen, Download, Info, Share2, Check } from 'lucide-react';
 import { FractalViewer, FractalViewerHandle } from '@/components/FractalViewer';
 import { RecipeBuilder } from '@/components/RecipeBuilder';
 import { MobileBottomSheet } from '@/components/MobileBottomSheet';
-import { RecentShapesPanel } from '@/components/RecentShapesPanel';
+import { RecentShapesPanel, RecentShapesPanelHandle } from '@/components/RecentShapesPanel';
 import { useFractalGeneration } from '@/hooks/useFractalGeneration';
-import { useUrlSync, getInitialUrlState, generateShareUrl, UrlState } from '@/hooks/useUrlSync';
+import { encodeLayers, decodeLayers } from '@/hooks/useUrlSync';
 import { PresetType, Layer, PRESETS, downloadStl, PRINT_CONFIG_OPTIONS, saveShape, getShape } from '@/lib/api';
 import { generateShapeId } from '@/lib/shapes';
 import {
@@ -41,7 +42,13 @@ interface RecipeState {
   sixWay: boolean;
 }
 
-export default function Home() {
+export interface HomeClientProps {
+  initialRecipe?: string; // encoded recipe from URL path (e.g., "3f.d-3f" or "3f.d-3f-6")
+}
+
+export function HomeClient({ initialRecipe }: HomeClientProps) {
+  const router = useRouter();
+
   // Initialization: false until first load completes
   const [isInitialized, setIsInitialized] = useState(false);
 
@@ -62,21 +69,28 @@ export default function Home() {
 
   // Shape saving state
   const [currentShapeId, setCurrentShapeId] = useState<string | null>(null);
-  const [recentShapesKey, setRecentShapesKey] = useState(0);
   const [recentPanelOpen, setRecentPanelOpen] = useState(true);
+  const [skipSaveForShape, setSkipSaveForShape] = useState<string | null>(null);
+  // Skip saving until user makes an intentional change (not initial load)
+  const [saveEnabled, setSaveEnabled] = useState(false);
   const viewerRef = useRef<FractalViewerHandle>(null);
+  const recentShapesPanelRef = useRef<RecentShapesPanelHandle>(null);
 
   const { objData, fileSize, isLoading, error, generate, fetchPresetRecipe } = useFractalGeneration();
 
-  // Memoize URL state to prevent unnecessary re-renders
-  const urlState = useMemo<UrlState>(() => ({
-    layers: recipe?.layers,
-    sixWay: recipe?.sixWay ?? false,
-    autoRotate,
-  }), [recipe, autoRotate]);
+  // Sync recipe state to URL path
+  useEffect(() => {
+    if (!isInitialized || !recipe) return;
 
-  // Sync state to URL (only after initialization)
-  useUrlSync(urlState, isInitialized);
+    const layersEncoded = encodeLayers(recipe.layers);
+    const sixWaySuffix = recipe.sixWay ? '-6' : '';
+    const newPath = `/r/${layersEncoded}${sixWaySuffix}`;
+
+    // Only update if path changed
+    if (window.location.pathname !== newPath) {
+      router.replace(newPath, { scroll: false });
+    }
+  }, [recipe, isInitialized, router]);
 
   // Set viewport height CSS variable for mobile compatibility
   useEffect(() => {
@@ -98,38 +112,24 @@ export default function Home() {
     }
   }, []);
 
-  // Initialize from URL params or default preset (runs once on mount)
+  // Initialize from initialRecipe prop or default preset (runs once on mount)
   useEffect(() => {
     if (isInitialized) return;
 
     const initialize = async () => {
-      const urlParams = getInitialUrlState();
+      // If we have an initial recipe from the URL path, use it
+      if (initialRecipe) {
+        const hasSixWay = initialRecipe.endsWith('-6');
+        const layersParam = hasSixWay ? initialRecipe.slice(0, -2) : initialRecipe;
+        const layers = decodeLayers(layersParam);
 
-      // If URL has layers, use them directly
-      if (urlParams.layers && urlParams.layers.length > 0) {
-        setRecipe({
-          layers: urlParams.layers,
-          sixWay: urlParams.sixWay ?? false,
-        });
-        setAutoRotate(urlParams.autoRotate ?? true);
-        setIsModified(true);
-        setSelectedPreset(null);
-        setGenerationVersion(1);
-        setIsInitialized(true);
-        return;
-      }
-
-      // If URL has preset, load it
-      if (urlParams.preset) {
-        const presetRecipe = await fetchPresetRecipe(urlParams.preset);
-        if (presetRecipe) {
+        if (layers && layers.length > 0) {
           setRecipe({
-            layers: presetRecipe.layers,
-            sixWay: presetRecipe.six_way ?? false,
+            layers,
+            sixWay: hasSixWay,
           });
-          setAutoRotate(urlParams.autoRotate ?? true);
-          setSelectedPreset(urlParams.preset);
-          setIsModified(false);
+          setIsModified(true);
+          setSelectedPreset(null);
           setGenerationVersion(1);
           setIsInitialized(true);
           return;
@@ -152,7 +152,7 @@ export default function Home() {
     };
 
     initialize();
-  }, [isInitialized, fetchPresetRecipe]);
+  }, [isInitialized, initialRecipe, fetchPresetRecipe]);
 
   // Single effect for all generation - triggered by generationVersion changes
   // This is the ONLY place generate() is called, making the flow predictable
@@ -182,6 +182,14 @@ export default function Home() {
     if (!objData || !recipe || !currentShapeId) return;
     if (savingShapeRef.current) return;
 
+    // Skip save during initial load - only save after user makes changes
+    if (!saveEnabled) return;
+
+    // Skip save if this shape was selected from recents (already exists)
+    if (skipSaveForShape === currentShapeId) {
+      return;
+    }
+
     // Wait for the shape to render before capturing
     const timer = setTimeout(async () => {
       if (savingShapeRef.current) return;
@@ -205,7 +213,7 @@ export default function Home() {
         await saveShape(recipe.layers, recipe.sixWay, screenshot);
 
         // Refresh recent shapes panel
-        setRecentShapesKey(k => k + 1);
+        recentShapesPanelRef.current?.refresh();
       } catch (err) {
         console.error('Failed to save shape:', err);
       } finally {
@@ -214,10 +222,14 @@ export default function Home() {
     }, 500); // Wait for render
 
     return () => clearTimeout(timer);
-  }, [objData, recipe, currentShapeId]);
+  }, [objData, recipe, currentShapeId, skipSaveForShape, saveEnabled]);
 
   // Handle selecting a shape from the recent shapes panel
   const handleSelectRecentShape = useCallback((layers: Layer[], sixWay: boolean) => {
+    // Mark this shape to skip saving (it already exists in storage)
+    const shapeId = generateShapeId(layers, sixWay);
+    setSkipSaveForShape(shapeId);
+
     setRecipe({ layers, sixWay });
     setSelectedPreset(null);
     setIsModified(true);
@@ -227,6 +239,8 @@ export default function Home() {
   // Handle preset selection - just updates state, generation effect handles the rest
   const handlePresetSelect = useCallback(async (preset: PresetType) => {
     setSelectedPreset(preset);
+    setSkipSaveForShape(null); // Clear skip flag for new shapes
+    setSaveEnabled(true); // Enable saving after user action
     const presetRecipe = await fetchPresetRecipe(preset);
     if (presetRecipe) {
       setRecipe({
@@ -241,25 +255,18 @@ export default function Home() {
   // Handle layer changes from RecipeBuilder
   const handleLayersChange = useCallback((newLayers: Layer[]) => {
     setRecipe(prev => prev ? { ...prev, layers: newLayers } : null);
+    setSkipSaveForShape(null); // Clear skip flag for new shapes
+    setSaveEnabled(true); // Enable saving after user action
     setIsModified(true);
     setGenerationVersion(v => v + 1);
   }, []);
 
-  // Handle share button click - use shape URL if available for better og:image
+  // Handle share button click - copy current URL
   const handleShare = useCallback(async () => {
     if (!recipe) return;
 
-    // If we have a saved shape, use the shape URL for better og:image preview
-    let url: string;
-    if (currentShapeId) {
-      url = `${window.location.origin}/s/${currentShapeId}`;
-    } else {
-      url = generateShareUrl({
-        layers: recipe.layers,
-        sixWay: recipe.sixWay,
-        autoRotate
-      });
-    }
+    // Current URL already has the /r/[recipe] format
+    const url = window.location.href;
 
     try {
       await navigator.clipboard.writeText(url);
@@ -269,7 +276,7 @@ export default function Home() {
       // Fallback for browsers without clipboard API
       prompt('Copy this URL to share:', url);
     }
-  }, [recipe, autoRotate, currentShapeId]);
+  }, [recipe]);
 
   // Control panel content - shared between desktop and mobile
   const controlPanelContent = (
@@ -528,7 +535,7 @@ export default function Home() {
 
       {/* Recent shapes panel - right side */}
       <RecentShapesPanel
-        key={recentShapesKey}
+        ref={recentShapesPanelRef}
         onSelectShape={handleSelectRecentShape}
         isOpen={recentPanelOpen}
         onOpenChange={(open) => {
@@ -541,4 +548,9 @@ export default function Home() {
       />
     </main>
   );
+}
+
+// Default export for the home page - no initial recipe, will load default preset
+export default function Home() {
+  return <HomeClient />;
 }
