@@ -15,11 +15,11 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: "Octohedra",
   description: "Fractal geometry generator - create and 3D print octahedral fractals",
-  metadataBase: new URL("https://octohedra.com"),
+  metadataBase: new URL("https://www.octohedra.com"),
   openGraph: {
     title: "Octohedra",
     description: "Fractal geometry generator - create and 3D print octahedral fractals",
-    url: "https://octohedra.com",
+    url: "https://www.octohedra.com",
     siteName: "Octohedra",
     type: "website",
   },
