@@ -3,7 +3,7 @@
 import { Canvas, useFrame, useThree } from '@react-three/fiber';
 import { TrackballControls } from '@react-three/drei';
 import { OBJLoader } from 'three-stdlib';
-import { useMemo, Suspense, useRef, useEffect, useCallback, useImperativeHandle, forwardRef } from 'react';
+import { useMemo, Suspense, useRef, useEffect, useCallback, useImperativeHandle, forwardRef, useState } from 'react';
 import Image from 'next/image';
 import * as THREE from 'three';
 import type { TrackballControls as TrackballControlsType } from 'three-stdlib';
@@ -12,12 +12,13 @@ export interface FractalViewerHandle {
   captureScreenshot: () => Promise<Blob | null>;
 }
 
-interface FractalViewerProps {
+export interface FractalViewerProps {
   objData: string | null;
   autoRotate?: boolean;
   onAutoRotateChange?: (autoRotate: boolean) => void;
   thumbnailUrl?: string | null;
   isLoading?: boolean;
+  onModelReady?: () => void;
 }
 
 // Parse OBJ data and return geometry info including bounding sphere radius
@@ -84,15 +85,22 @@ function parseObjData(objData: string): { geometry: THREE.BufferGeometry | null;
   return { geometry: geo, radius };
 }
 
-function FractalModel({ objData, onRadiusChange }: { objData: string; onRadiusChange?: (radius: number) => void }) {
+function FractalModel({ objData, onRadiusChange, onReady }: { objData: string; onRadiusChange?: (radius: number) => void; onReady?: () => void }) {
   const { geometry, radius } = useMemo(() => parseObjData(objData), [objData]);
 
-  // Notify parent of radius change
+  // Notify parent of radius change and that model is ready
   useEffect(() => {
     if (onRadiusChange && radius) {
       onRadiusChange(radius);
     }
-  }, [radius, onRadiusChange]);
+    // Signal model is ready after geometry is parsed and component is mounted
+    if (geometry && onReady) {
+      // Use requestAnimationFrame to ensure the mesh is actually rendered
+      requestAnimationFrame(() => {
+        onReady();
+      });
+    }
+  }, [radius, geometry, onRadiusChange, onReady]);
 
   if (!geometry) return null;
 
@@ -126,10 +134,12 @@ function SceneContent({
   objData,
   autoRotate,
   onAutoRotateChange,
+  onModelReady,
 }: {
   objData: string | null;
   autoRotate: boolean;
   onAutoRotateChange?: (autoRotate: boolean) => void;
+  onModelReady?: () => void;
 }) {
   const { camera } = useThree();
   const controlsRef = useRef<TrackballControlsType>(null);
@@ -245,7 +255,7 @@ function SceneContent({
         color="#ffffff"
       />
       <Suspense fallback={null}>
-        {objData && <FractalModel objData={objData} onRadiusChange={handleRadiusChange} />}
+        {objData && <FractalModel objData={objData} onRadiusChange={handleRadiusChange} onReady={onModelReady} />}
       </Suspense>
       <TrackballControls
         ref={controlsRef}
@@ -266,8 +276,24 @@ function SceneContent({
 }
 
 export const FractalViewer = forwardRef<FractalViewerHandle, FractalViewerProps>(
-  function FractalViewer({ objData, autoRotate = true, onAutoRotateChange, thumbnailUrl, isLoading }, ref) {
+  function FractalViewer({ objData, autoRotate = true, onAutoRotateChange, thumbnailUrl, isLoading, onModelReady }, ref) {
     const canvasRef = useRef<HTMLCanvasElement>(null);
+    const [modelReady, setModelReady] = useState(false);
+    const prevObjDataRef = useRef<string | null>(null);
+
+    // Reset modelReady when objData changes (new model loading)
+    useEffect(() => {
+      if (objData !== prevObjDataRef.current) {
+        setModelReady(false);
+        prevObjDataRef.current = objData;
+      }
+    }, [objData]);
+
+    // Handle model ready callback
+    const handleModelReady = useCallback(() => {
+      setModelReady(true);
+      onModelReady?.();
+    }, [onModelReady]);
 
     // Camera position for side view with pyramid base pointing down
     // The model has Z as vertical axis, so we position camera in XY plane with slight elevation
@@ -292,14 +318,14 @@ export const FractalViewer = forwardRef<FractalViewerHandle, FractalViewerProps>
       },
     }), []);
 
-    // Show thumbnail while loading if available
-    const showThumbnail = isLoading && thumbnailUrl && !objData;
+    // Show thumbnail while model is not ready (either loading from API or parsing/rendering)
+    const showThumbnail = thumbnailUrl && !modelReady;
 
     return (
       <div className="relative w-full h-dvh bg-gray-950">
         {/* Thumbnail overlay while loading */}
         {showThumbnail && (
-          <div className="absolute inset-0 z-10 flex items-center justify-center">
+          <div className="absolute inset-0 z-1 flex items-center justify-center">
             <Image
               src={thumbnailUrl}
               alt="Loading preview"
@@ -315,7 +341,7 @@ export const FractalViewer = forwardRef<FractalViewerHandle, FractalViewerProps>
           camera={{ position: [initialX, initialY, initialZ], fov: 45, up: [0, 0, 1] }}
           gl={{ preserveDrawingBuffer: true }}
         >
-          <SceneContent objData={objData} autoRotate={autoRotate} onAutoRotateChange={onAutoRotateChange} />
+          <SceneContent objData={objData} autoRotate={autoRotate} onAutoRotateChange={onAutoRotateChange} onModelReady={handleModelReady} />
         </Canvas>
       </div>
     );

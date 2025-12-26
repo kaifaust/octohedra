@@ -75,6 +75,8 @@ export function HomeClient({ initialRecipe }: HomeClientProps) {
   const [saveEnabled, setSaveEnabled] = useState(false);
   // Thumbnail URL for showing preview while model loads
   const [thumbnailUrl, setThumbnailUrl] = useState<string | null>(null);
+  // Track if the 3D model has finished rendering (separate from API loading)
+  const [modelReady, setModelReady] = useState(false);
   const viewerRef = useRef<FractalViewerHandle>(null);
   const recentShapesPanelRef = useRef<RecentShapesPanelHandle>(null);
 
@@ -161,6 +163,9 @@ export function HomeClient({ initialRecipe }: HomeClientProps) {
   // This is the ONLY place generate() is called, making the flow predictable
   useEffect(() => {
     if (generationVersion === 0 || !recipe) return;
+
+    // Reset model ready state when starting new generation
+    setModelReady(false);
 
     // Update current shape ID for tracking
     const shapeId = generateShapeId(recipe.layers, recipe.sixWay);
@@ -471,11 +476,12 @@ export function HomeClient({ initialRecipe }: HomeClientProps) {
         onAutoRotateChange={setAutoRotate}
         thumbnailUrl={thumbnailUrl}
         isLoading={isLoading}
+        onModelReady={() => setModelReady(true)}
       />
 
-      {/* Centered loading spinner */}
-      {isLoading && (
-        <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+      {/* Centered loading spinner - show while API is loading OR model is parsing/rendering */}
+      {(isLoading || !modelReady) && (
+        <div className="absolute inset-0 z-2 flex items-center justify-center pointer-events-none">
           <div className="h-12 w-12 border-4 border-white/30 border-t-white rounded-full animate-spin" />
         </div>
       )}
