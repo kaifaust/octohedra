@@ -73,6 +73,8 @@ export function HomeClient({ initialRecipe }: HomeClientProps) {
   const [skipSaveForShape, setSkipSaveForShape] = useState<string | null>(null);
   // Skip saving until user makes an intentional change (not initial load)
   const [saveEnabled, setSaveEnabled] = useState(false);
+  // Thumbnail URL for showing preview while model loads
+  const [thumbnailUrl, setThumbnailUrl] = useState<string | null>(null);
   const viewerRef = useRef<FractalViewerHandle>(null);
   const recentShapesPanelRef = useRef<RecentShapesPanelHandle>(null);
 
@@ -162,6 +164,15 @@ export function HomeClient({ initialRecipe }: HomeClientProps) {
     // Update current shape ID for tracking
     const shapeId = generateShapeId(recipe.layers, recipe.sixWay);
     setCurrentShapeId(shapeId);
+
+    // Try to fetch existing shape thumbnail for loading preview
+    getShape(shapeId).then((existingShape) => {
+      if (existingShape?.screenshotUrl) {
+        setThumbnailUrl(existingShape.screenshotUrl);
+      } else {
+        setThumbnailUrl(null);
+      }
+    });
 
     // Debounce for rapid changes (e.g., slider dragging)
     const timer = setTimeout(() => {
@@ -457,6 +468,8 @@ export function HomeClient({ initialRecipe }: HomeClientProps) {
         objData={objData}
         autoRotate={autoRotate}
         onAutoRotateChange={setAutoRotate}
+        thumbnailUrl={thumbnailUrl}
+        isLoading={isLoading}
       />
 
       {/* Centered loading spinner */}

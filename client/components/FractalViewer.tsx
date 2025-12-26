@@ -4,6 +4,7 @@ import { Canvas, useFrame, useThree } from '@react-three/fiber';
 import { TrackballControls } from '@react-three/drei';
 import { OBJLoader } from 'three-stdlib';
 import { useMemo, Suspense, useRef, useEffect, useCallback, useImperativeHandle, forwardRef } from 'react';
+import Image from 'next/image';
 import * as THREE from 'three';
 import type { TrackballControls as TrackballControlsType } from 'three-stdlib';
 
@@ -15,6 +16,8 @@ interface FractalViewerProps {
   objData: string | null;
   autoRotate?: boolean;
   onAutoRotateChange?: (autoRotate: boolean) => void;
+  thumbnailUrl?: string | null;
+  isLoading?: boolean;
 }
 
 // Parse OBJ data and return geometry info including bounding sphere radius
@@ -263,7 +266,7 @@ function SceneContent({
 }
 
 export const FractalViewer = forwardRef<FractalViewerHandle, FractalViewerProps>(
-  function FractalViewer({ objData, autoRotate = true, onAutoRotateChange }, ref) {
+  function FractalViewer({ objData, autoRotate = true, onAutoRotateChange, thumbnailUrl, isLoading }, ref) {
     const canvasRef = useRef<HTMLCanvasElement>(null);
 
     // Camera position for side view with pyramid base pointing down
@@ -289,8 +292,24 @@ export const FractalViewer = forwardRef<FractalViewerHandle, FractalViewerProps>
       },
     }), []);
 
+    // Show thumbnail while loading if available
+    const showThumbnail = isLoading && thumbnailUrl && !objData;
+
     return (
-      <div className="w-full h-dvh bg-gray-950">
+      <div className="relative w-full h-dvh bg-gray-950">
+        {/* Thumbnail overlay while loading */}
+        {showThumbnail && (
+          <div className="absolute inset-0 z-10 flex items-center justify-center">
+            <Image
+              src={thumbnailUrl}
+              alt="Loading preview"
+              fill
+              sizes="100vw"
+              className="object-contain"
+              priority
+            />
+          </div>
+        )}
         <Canvas
           ref={canvasRef}
           camera={{ position: [initialX, initialY, initialZ], fov: 45, up: [0, 0, 1] }}

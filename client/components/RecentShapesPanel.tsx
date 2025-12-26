@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback, useImperativeHandle, forwardRef } from 'react';
+import Image from 'next/image';
 import { ChevronRight, ChevronLeft, Loader2 } from 'lucide-react';
 import { StoredShape, listRecentShapes, Layer } from '@/lib/api';
 import { Button } from '@/components/ui/button';
@@ -147,13 +148,14 @@ export const RecentShapesPanel = forwardRef<RecentShapesPanelHandle, RecentShape
                 <button
                   key={shape.id}
                   onClick={() => onSelectShape(shape.layers, shape.sixWay)}
-                  className="w-full aspect-square rounded-md overflow-hidden border border-border/50 hover:border-primary/50 transition-colors focus:outline-none focus:ring-2 focus:ring-primary/50"
+                  className="relative w-full aspect-square rounded-md overflow-hidden border border-border/50 hover:border-primary/50 transition-colors focus:outline-none focus:ring-2 focus:ring-primary/50"
                 >
-                  <img
+                  <Image
                     src={shape.screenshotUrl}
                     alt="Shape preview"
-                    className="w-full h-full object-cover"
-                    loading="lazy"
+                    fill
+                    sizes="80px"
+                    className="object-cover"
                   />
                 </button>
               ))}
