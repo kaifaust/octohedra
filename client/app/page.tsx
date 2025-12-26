@@ -62,7 +62,6 @@ export default function Home() {
 
   // Shape saving state
   const [currentShapeId, setCurrentShapeId] = useState<string | null>(null);
-  const [isSavingShape, setIsSavingShape] = useState(false);
   const [recentShapesKey, setRecentShapesKey] = useState(0);
   const viewerRef = useRef<FractalViewerHandle>(null);
 
@@ -175,25 +174,29 @@ export default function Home() {
   }, [generationVersion, recipe, generate]);
 
   // Save shape screenshot after generation completes (with delay for render)
+  // Use a ref to track saving state to avoid infinite loops
+  const savingShapeRef = useRef(false);
+
   useEffect(() => {
-    if (!objData || !recipe || !currentShapeId || isSavingShape) return;
+    if (!objData || !recipe || !currentShapeId) return;
+    if (savingShapeRef.current) return;
 
     // Wait for the shape to render before capturing
     const timer = setTimeout(async () => {
+      if (savingShapeRef.current) return;
+
       try {
-        setIsSavingShape(true);
+        savingShapeRef.current = true;
 
         // Check if shape already exists
         const existingShape = await getShape(currentShapeId);
         if (existingShape) {
-          setIsSavingShape(false);
           return;
         }
 
         // Capture screenshot
         const screenshot = await viewerRef.current?.captureScreenshot();
         if (!screenshot) {
-          setIsSavingShape(false);
           return;
         }
 
@@ -205,12 +208,12 @@ export default function Home() {
       } catch (err) {
         console.error('Failed to save shape:', err);
       } finally {
-        setIsSavingShape(false);
+        savingShapeRef.current = false;
       }
     }, 500); // Wait for render
 
     return () => clearTimeout(timer);
-  }, [objData, recipe, currentShapeId, isSavingShape]);
+  }, [objData, recipe, currentShapeId]);
 
   // Handle selecting a shape from the recent shapes panel
   const handleSelectRecentShape = useCallback((layers: Layer[], sixWay: boolean) => {
