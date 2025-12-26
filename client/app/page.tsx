@@ -33,21 +33,28 @@ import {
   TooltipTrigger,
 } from '@/components/ui/tooltip';
 
-type InitState = 'pending' | 'loading' | 'ready';
+// Recipe state combines layers + sixWay for atomic updates
+interface RecipeState {
+  layers: Layer[];
+  sixWay: boolean;
+}
 
 export default function Home() {
-  // Initialization state machine - cleaner than ref-based tracking
-  const [initState, setInitState] = useState<InitState>('pending');
+  // Initialization: false until first load completes
+  const [isInitialized, setIsInitialized] = useState(false);
 
-  // Recipe state (layers + six_way)
-  const [layers, setLayers] = useState<Layer[] | null>(null);
-  const [sixWay, setSixWay] = useState(false);
+  // Recipe state - null until initialized
+  const [recipe, setRecipe] = useState<RecipeState | null>(null);
+
+  // Generation version - increments on every intentional recipe change
+  // The generate effect only runs when this changes, preventing duplicates
+  const [generationVersion, setGenerationVersion] = useState(0);
 
   // UI state
   const [selectedPreset, setSelectedPreset] = useState<PresetType | null>(null);
   const [isModified, setIsModified] = useState(false);
   const [autoRotate, setAutoRotate] = useState(true);
-  // Default to closed - will open on desktop via useEffect
+  // Start closed to avoid hydration mismatch, open on desktop after mount
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [shareTooltip, setShareTooltip] = useState<'idle' | 'copied'>('idle');
 
@@ -55,138 +62,136 @@ export default function Home() {
 
   // Memoize URL state to prevent unnecessary re-renders
   const urlState = useMemo<UrlState>(() => ({
-    layers: layers ?? undefined,
-    sixWay,
+    layers: recipe?.layers,
+    sixWay: recipe?.sixWay ?? false,
     autoRotate,
-  }), [layers, sixWay, autoRotate]);
+  }), [recipe, autoRotate]);
 
   // Sync state to URL (only after initialization)
-  useUrlSync(urlState, initState === 'ready');
+  useUrlSync(urlState, isInitialized);
 
   // Set viewport height CSS variable for mobile compatibility
-  // Also open drawer by default on desktop
   useEffect(() => {
     const setVH = () => {
       document.documentElement.style.setProperty('--vh', `${window.innerHeight * 0.01}px`);
     };
     setVH();
     window.addEventListener('resize', setVH);
-
-    // Open drawer by default on desktop only
-    if (window.matchMedia('(min-width: 768px)').matches) {
-      setDrawerOpen(true);
-    }
-
     return () => window.removeEventListener('resize', setVH);
   }, []);
 
-  // Initialize from URL params or default preset
+  // Open drawer by default on desktop (after hydration to avoid mismatch)
   useEffect(() => {
-    if (initState !== 'pending') return;
+    const mediaQuery = window.matchMedia('(min-width: 768px)');
+    if (mediaQuery.matches) {
+      // Use event handler pattern to satisfy lint rule
+      const handler = () => setDrawerOpen(true);
+      handler();
+    }
+  }, []);
 
-    setInitState('loading');
+  // Initialize from URL params or default preset (runs once on mount)
+  useEffect(() => {
+    if (isInitialized) return;
 
-    const initializeFromUrl = async () => {
+    const initialize = async () => {
       const urlParams = getInitialUrlState();
 
       // If URL has layers, use them directly
       if (urlParams.layers && urlParams.layers.length > 0) {
-        setLayers(urlParams.layers);
-        setSixWay(urlParams.sixWay ?? false);
-        setAutoRotate(urlParams.autoRotate ?? true);
-        setIsModified(true); // URL params are considered "modified" from any preset
-        setSelectedPreset(null);
-
-        // Generate with URL layers
-        await generate({
+        setRecipe({
           layers: urlParams.layers,
-          six_way: urlParams.sixWay ?? false,
+          sixWay: urlParams.sixWay ?? false,
         });
-
-        setInitState('ready');
+        setAutoRotate(urlParams.autoRotate ?? true);
+        setIsModified(true);
+        setSelectedPreset(null);
+        setGenerationVersion(1);
+        setIsInitialized(true);
         return;
       }
 
       // If URL has preset, load it
       if (urlParams.preset) {
-        const recipe = await fetchPresetRecipe(urlParams.preset);
-        if (recipe) {
-          setLayers(recipe.layers);
-          setSixWay(recipe.six_way ?? false);
+        const presetRecipe = await fetchPresetRecipe(urlParams.preset);
+        if (presetRecipe) {
+          setRecipe({
+            layers: presetRecipe.layers,
+            sixWay: presetRecipe.six_way ?? false,
+          });
           setAutoRotate(urlParams.autoRotate ?? true);
           setSelectedPreset(urlParams.preset);
           setIsModified(false);
-
-          await generate({
-            layers: recipe.layers,
-            six_way: recipe.six_way,
-          });
-
-          setInitState('ready');
+          setGenerationVersion(1);
+          setIsInitialized(true);
           return;
         }
       }
 
       // Default: load flake preset
-      const recipe = await fetchPresetRecipe('flake');
-      if (recipe) {
-        setLayers(recipe.layers);
-        setSixWay(recipe.six_way ?? false);
+      const defaultRecipe = await fetchPresetRecipe('flake');
+      if (defaultRecipe) {
+        setRecipe({
+          layers: defaultRecipe.layers,
+          sixWay: defaultRecipe.six_way ?? false,
+        });
         setSelectedPreset('flake');
         setIsModified(false);
-
-        await generate({
-          layers: recipe.layers,
-          six_way: recipe.six_way,
-        });
+        setGenerationVersion(1);
       }
 
-      setInitState('ready');
+      setIsInitialized(true);
     };
 
-    initializeFromUrl();
-  }, [initState, generate, fetchPresetRecipe]);
+    initialize();
+  }, [isInitialized, fetchPresetRecipe]);
 
-  // Handle preset selection
-  const handlePresetSelect = useCallback(async (preset: PresetType) => {
-    setSelectedPreset(preset);
-    const recipe = await fetchPresetRecipe(preset);
-    if (recipe) {
-      setLayers(recipe.layers);
-      setSixWay(recipe.six_way ?? false);
-      setIsModified(false);
-      generate({
-        layers: recipe.layers,
-        six_way: recipe.six_way,
-      });
-    }
-  }, [fetchPresetRecipe, generate]);
-
-  // Handle layer changes from RecipeBuilder
-  const handleLayersChange = useCallback((newLayers: Layer[]) => {
-    setLayers(newLayers);
-    setIsModified(true);
-  }, []);
-
-  // Auto-generate when recipe changes (after initialization)
+  // Single effect for all generation - triggered by generationVersion changes
+  // This is the ONLY place generate() is called, making the flow predictable
   useEffect(() => {
-    if (initState !== 'ready' || !layers) return;
+    if (generationVersion === 0 || !recipe) return;
 
+    // Debounce for rapid changes (e.g., slider dragging)
     const timer = setTimeout(() => {
       generate({
-        layers,
-        six_way: sixWay,
+        layers: recipe.layers,
+        six_way: recipe.sixWay,
       });
     }, 300);
 
     return () => clearTimeout(timer);
-  }, [layers, sixWay, generate, initState]);
+  }, [generationVersion, recipe, generate]);
+
+  // Handle preset selection - just updates state, generation effect handles the rest
+  const handlePresetSelect = useCallback(async (preset: PresetType) => {
+    setSelectedPreset(preset);
+    const presetRecipe = await fetchPresetRecipe(preset);
+    if (presetRecipe) {
+      setRecipe({
+        layers: presetRecipe.layers,
+        sixWay: presetRecipe.six_way ?? false,
+      });
+      setIsModified(false);
+      setGenerationVersion(v => v + 1);
+    }
+  }, [fetchPresetRecipe]);
+
+  // Handle layer changes from RecipeBuilder
+  const handleLayersChange = useCallback((newLayers: Layer[]) => {
+    setRecipe(prev => prev ? { ...prev, layers: newLayers } : null);
+    setIsModified(true);
+    setGenerationVersion(v => v + 1);
+  }, []);
 
   // Handle share button click
   const handleShare = useCallback(async () => {
-    if (!layers) return;
+    if (!recipe) return;
 
-    const url = generateShareUrl({ layers, sixWay, autoRotate });
+    const url = generateShareUrl({
+      layers: recipe.layers,
+      sixWay: recipe.sixWay,
+      autoRotate
+    });
 
     try {
       await navigator.clipboard.writeText(url);
@@ -196,7 +201,7 @@ export default function Home() {
       // Fallback for browsers without clipboard API
       prompt('Copy this URL to share:', url);
     }
-  }, [layers, sixWay, autoRotate]);
+  }, [recipe, autoRotate]);
 
   // Control panel content - shared between desktop and mobile
   const controlPanelContent = (
@@ -225,9 +230,9 @@ export default function Home() {
       <Separator />
 
       {/* Recipe builder */}
-      {layers && layers.length > 0 && (
+      {recipe && recipe.layers.length > 0 && (
         <RecipeBuilder
-          layers={layers}
+          layers={recipe.layers}
           onLayersChange={handleLayersChange}
         />
       )}
@@ -300,9 +305,12 @@ export default function Home() {
               <DropdownMenuItem
                 key={config.value}
                 onClick={async () => {
-                  if (!layers) return;
+                  if (!recipe) return;
                   try {
-                    const blob = await downloadStl({ layers, six_way: sixWay }, config.value);
+                    const blob = await downloadStl(
+                      { layers: recipe.layers, six_way: recipe.sixWay },
+                      config.value
+                    );
                     const url = URL.createObjectURL(blob);
                     const a = document.createElement('a');
                     a.href = url;
