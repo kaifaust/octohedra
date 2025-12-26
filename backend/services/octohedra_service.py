@@ -1,4 +1,6 @@
 
+import gc
+
 from trimesh.exchange.export import export_mesh
 
 from octohedra.builders.RecipeBuilder import PRESET_RECIPES, RecipeBuilder, get_preset_recipe
@@ -84,6 +86,7 @@ def generate_from_recipe(
         include_normals=False,
         digits=6,
     )
+    gc.collect()
     return obj_content
 
 
@@ -113,6 +116,7 @@ def generate_stl_from_recipe(
         file_obj=None,
         file_type="stl",
     )
+    gc.collect()
     return stl_content
 
 
