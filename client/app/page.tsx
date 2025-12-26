@@ -63,6 +63,7 @@ export default function Home() {
   // Shape saving state
   const [currentShapeId, setCurrentShapeId] = useState<string | null>(null);
   const [recentShapesKey, setRecentShapesKey] = useState(0);
+  const [recentPanelOpen, setRecentPanelOpen] = useState(true);
   const viewerRef = useRef<FractalViewerHandle>(null);
 
   const { objData, fileSize, isLoading, error, generate, fetchPresetRecipe } = useFractalGeneration();
@@ -505,7 +506,13 @@ export default function Home() {
       <div className="md:hidden">
         <MobileBottomSheet
           isOpen={drawerOpen}
-          onOpenChange={setDrawerOpen}
+          onOpenChange={(open) => {
+            setDrawerOpen(open);
+            // Close recent panel when opening control panel on mobile
+            if (open) {
+              setRecentPanelOpen(false);
+            }
+          }}
           title="Octohedra"
           headerActions={headerActions}
         >
@@ -523,6 +530,14 @@ export default function Home() {
       <RecentShapesPanel
         key={recentShapesKey}
         onSelectShape={handleSelectRecentShape}
+        isOpen={recentPanelOpen}
+        onOpenChange={(open) => {
+          setRecentPanelOpen(open);
+          // On mobile, close the control panel when opening recent panel
+          if (open && window.innerWidth < 768) {
+            setDrawerOpen(false);
+          }
+        }}
       />
     </main>
   );

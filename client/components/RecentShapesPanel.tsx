@@ -7,12 +7,13 @@ import { Button } from '@/components/ui/button';
 
 interface RecentShapesPanelProps {
   onSelectShape: (layers: Layer[], sixWay: boolean) => void;
+  isOpen: boolean;
+  onOpenChange: (open: boolean) => void;
 }
 
-export function RecentShapesPanel({ onSelectShape }: RecentShapesPanelProps) {
+export function RecentShapesPanel({ onSelectShape, isOpen, onOpenChange }: RecentShapesPanelProps) {
   const [shapes, setShapes] = useState<StoredShape[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [isOpen, setIsOpen] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -38,15 +39,20 @@ export function RecentShapesPanel({ onSelectShape }: RecentShapesPanelProps) {
     return null;
   }
 
+  // Layout approach:
+  // - Use a flex column container anchored to the right edge
+  // - Desktop: top-4, with bottom padding for fileInfoBar (bottom-4 + bar height ~2rem = 6rem total)
+  // - Mobile: below fileInfoBar (top-14), with bottom padding for MobileBottomSheet header (~4rem)
+  // - z-50 to stay above MobileBottomSheet (z-40)
+
   return (
-    <>
-      {/* Toggle button - positioned to avoid conflicts with file info bar */}
-      {/* Mobile: below file info (top-14), Desktop: bottom-right above file info bar */}
+    <div className="absolute top-14 md:top-4 right-4 bottom-20 md:bottom-12 z-50 flex flex-col items-end gap-2 pointer-events-none">
+      {/* Toggle button */}
       <Button
         variant="secondary"
         size="icon"
-        className="absolute top-14 right-4 md:top-4 bg-card/80 backdrop-blur-sm border-border/50 z-10"
-        onClick={() => setIsOpen(!isOpen)}
+        className="bg-card/80 backdrop-blur-sm border-border/50 pointer-events-auto shrink-0"
+        onClick={() => onOpenChange(!isOpen)}
         aria-label={isOpen ? 'Close recent shapes' : 'Show recent shapes'}
       >
         {isOpen ? (
@@ -56,13 +62,13 @@ export function RecentShapesPanel({ onSelectShape }: RecentShapesPanelProps) {
         )}
       </Button>
 
-      {/* Panel */}
+      {/* Panel - uses remaining space in the flex container */}
       <div
-        className={`absolute top-24 md:top-14 right-4 w-24 transition-transform duration-200 ease-in-out ${
-          isOpen ? 'translate-x-0' : 'translate-x-full opacity-0 pointer-events-none'
+        className={`w-24 min-h-0 flex-1 transition-all duration-200 ease-in-out pointer-events-auto ${
+          isOpen ? 'opacity-100' : 'translate-x-full opacity-0 pointer-events-none'
         }`}
       >
-        <div className="bg-card/80 backdrop-blur-sm border border-border/50 rounded-lg p-2 max-h-[calc(100dvh-8rem)] md:max-h-[calc(100dvh-5rem)] overflow-y-auto">
+        <div className="bg-card/80 backdrop-blur-sm border border-border/50 rounded-lg p-2 max-h-full overflow-y-auto">
           <h3 className="text-xs font-medium text-muted-foreground mb-2 px-1">Recent</h3>
 
           {isLoading ? (
@@ -89,6 +95,6 @@ export function RecentShapesPanel({ onSelectShape }: RecentShapesPanelProps) {
           )}
         </div>
       </div>
-    </>
+    </div>
   );
 }
