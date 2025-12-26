@@ -133,6 +133,7 @@ export function HomeClient({ initialRecipe }: HomeClientProps) {
           setIsModified(true);
           setSelectedPreset(null);
           setGenerationVersion(1);
+          setSaveEnabled(true);
           setIsInitialized(true);
           return;
         }
