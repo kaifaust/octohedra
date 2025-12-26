@@ -153,3 +153,83 @@ export async function downloadStl(
 
   return response.blob();
 }
+
+// Shape storage types
+export interface StoredShape {
+  id: string;
+  layers: Layer[];
+  sixWay: boolean;
+  stlUrl: string;
+  screenshotUrl: string;
+  createdAt: string;
+}
+
+/**
+ * Save a shape with screenshot to Vercel Blob storage
+ */
+export async function saveShape(
+  layers: Layer[],
+  sixWay: boolean,
+  screenshot: Blob,
+  stl?: Blob
+): Promise<StoredShape> {
+  const formData = new FormData();
+  formData.append('layers', JSON.stringify(layers));
+  formData.append('sixWay', String(sixWay));
+  formData.append('screenshot', screenshot, 'screenshot.png');
+  if (stl) {
+    formData.append('stl', stl, 'model.stl');
+  }
+
+  const response = await fetch('/api/shapes', {
+    method: 'POST',
+    body: formData,
+  });
+
+  if (!response.ok) {
+    const text = await response.text();
+    throw new Error(`Failed to save shape: ${text}`);
+  }
+
+  return response.json();
+}
+
+/**
+ * Get a stored shape by ID
+ */
+export async function getShape(id: string): Promise<StoredShape | null> {
+  try {
+    const response = await fetch(`/api/shapes/${id}`);
+
+    // 404 = shape doesn't exist, 503 = blob not configured
+    if (response.status === 404 || response.status === 503) {
+      return null;
+    }
+
+    if (!response.ok) {
+      return null;
+    }
+
+    return response.json();
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * List recent shapes
+ */
+export async function listRecentShapes(limit: number = 10): Promise<StoredShape[]> {
+  try {
+    const response = await fetch(`/api/shapes?limit=${limit}`);
+
+    // 503 = blob not configured
+    if (!response.ok) {
+      return [];
+    }
+
+    return response.json();
+  } catch {
+    return [];
+  }
+}

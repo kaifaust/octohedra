@@ -3,9 +3,13 @@
 import { Canvas, useFrame, useThree } from '@react-three/fiber';
 import { TrackballControls } from '@react-three/drei';
 import { OBJLoader } from 'three-stdlib';
-import { useMemo, Suspense, useRef, useEffect, useCallback } from 'react';
+import { useMemo, Suspense, useRef, useEffect, useCallback, useImperativeHandle, forwardRef } from 'react';
 import * as THREE from 'three';
 import type { TrackballControls as TrackballControlsType } from 'three-stdlib';
+
+export interface FractalViewerHandle {
+  captureScreenshot: () => Promise<Blob | null>;
+}
 
 interface FractalViewerProps {
   objData: string | null;
@@ -258,21 +262,43 @@ function SceneContent({
   );
 }
 
-export function FractalViewer({ objData, autoRotate = true, onAutoRotateChange }: FractalViewerProps) {
-  // Camera position for side view with pyramid base pointing down
-  // The model has Z as vertical axis, so we position camera in XY plane with slight elevation
-  // 45-degree angle in XY plane, slightly above Z=0 to see the 3D shape
-  const angle = Math.PI / 4; // 45 degrees in XY plane
-  const elevation = 0.3; // Slight elevation to see 3D nature
-  const initialX = DEFAULT_CAMERA_DISTANCE * Math.cos(angle) * Math.cos(elevation);
-  const initialY = DEFAULT_CAMERA_DISTANCE * Math.sin(angle) * Math.cos(elevation);
-  const initialZ = DEFAULT_CAMERA_DISTANCE * Math.sin(elevation);
+export const FractalViewer = forwardRef<FractalViewerHandle, FractalViewerProps>(
+  function FractalViewer({ objData, autoRotate = true, onAutoRotateChange }, ref) {
+    const canvasRef = useRef<HTMLCanvasElement>(null);
 
-  return (
-    <div className="w-full h-dvh bg-gray-950">
-      <Canvas camera={{ position: [initialX, initialY, initialZ], fov: 45, up: [0, 0, 1] }}>
-        <SceneContent objData={objData} autoRotate={autoRotate} onAutoRotateChange={onAutoRotateChange} />
-      </Canvas>
-    </div>
-  );
-}
+    // Camera position for side view with pyramid base pointing down
+    // The model has Z as vertical axis, so we position camera in XY plane with slight elevation
+    // 45-degree angle in XY plane, slightly above Z=0 to see the 3D shape
+    const angle = Math.PI / 4; // 45 degrees in XY plane
+    const elevation = 0.3; // Slight elevation to see 3D nature
+    const initialX = DEFAULT_CAMERA_DISTANCE * Math.cos(angle) * Math.cos(elevation);
+    const initialY = DEFAULT_CAMERA_DISTANCE * Math.sin(angle) * Math.cos(elevation);
+    const initialZ = DEFAULT_CAMERA_DISTANCE * Math.sin(elevation);
+
+    // Expose screenshot capture to parent
+    useImperativeHandle(ref, () => ({
+      captureScreenshot: async () => {
+        const canvas = canvasRef.current;
+        if (!canvas) return null;
+
+        return new Promise<Blob | null>((resolve) => {
+          canvas.toBlob((blob) => {
+            resolve(blob);
+          }, 'image/png');
+        });
+      },
+    }), []);
+
+    return (
+      <div className="w-full h-dvh bg-gray-950">
+        <Canvas
+          ref={canvasRef}
+          camera={{ position: [initialX, initialY, initialZ], fov: 45, up: [0, 0, 1] }}
+          gl={{ preserveDrawingBuffer: true }}
+        >
+          <SceneContent objData={objData} autoRotate={autoRotate} onAutoRotateChange={onAutoRotateChange} />
+        </Canvas>
+      </div>
+    );
+  }
+);

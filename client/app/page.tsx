@@ -1,13 +1,15 @@
 'use client';
 
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { RotateCw, PanelLeftClose, PanelLeftOpen, Download, Info, Share2, Check } from 'lucide-react';
-import { FractalViewer } from '@/components/FractalViewer';
+import { FractalViewer, FractalViewerHandle } from '@/components/FractalViewer';
 import { RecipeBuilder } from '@/components/RecipeBuilder';
 import { MobileBottomSheet } from '@/components/MobileBottomSheet';
+import { RecentShapesPanel } from '@/components/RecentShapesPanel';
 import { useFractalGeneration } from '@/hooks/useFractalGeneration';
 import { useUrlSync, getInitialUrlState, generateShareUrl, UrlState } from '@/hooks/useUrlSync';
-import { PresetType, Layer, PRESETS, downloadStl, PRINT_CONFIG_OPTIONS } from '@/lib/api';
+import { PresetType, Layer, PRESETS, downloadStl, PRINT_CONFIG_OPTIONS, saveShape, getShape } from '@/lib/api';
+import { generateShapeId } from '@/lib/shapes';
 import {
   DropdownMenu,
   DropdownMenuTrigger,
@@ -57,6 +59,12 @@ export default function Home() {
   // Start closed to avoid hydration mismatch, open on desktop after mount
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [shareTooltip, setShareTooltip] = useState<'idle' | 'copied'>('idle');
+
+  // Shape saving state
+  const [currentShapeId, setCurrentShapeId] = useState<string | null>(null);
+  const [isSavingShape, setIsSavingShape] = useState(false);
+  const [recentShapesKey, setRecentShapesKey] = useState(0);
+  const viewerRef = useRef<FractalViewerHandle>(null);
 
   const { objData, fileSize, isLoading, error, generate, fetchPresetRecipe } = useFractalGeneration();
 
@@ -151,6 +159,10 @@ export default function Home() {
   useEffect(() => {
     if (generationVersion === 0 || !recipe) return;
 
+    // Update current shape ID for tracking
+    const shapeId = generateShapeId(recipe.layers, recipe.sixWay);
+    setCurrentShapeId(shapeId);
+
     // Debounce for rapid changes (e.g., slider dragging)
     const timer = setTimeout(() => {
       generate({
@@ -161,6 +173,52 @@ export default function Home() {
 
     return () => clearTimeout(timer);
   }, [generationVersion, recipe, generate]);
+
+  // Save shape screenshot after generation completes (with delay for render)
+  useEffect(() => {
+    if (!objData || !recipe || !currentShapeId || isSavingShape) return;
+
+    // Wait for the shape to render before capturing
+    const timer = setTimeout(async () => {
+      try {
+        setIsSavingShape(true);
+
+        // Check if shape already exists
+        const existingShape = await getShape(currentShapeId);
+        if (existingShape) {
+          setIsSavingShape(false);
+          return;
+        }
+
+        // Capture screenshot
+        const screenshot = await viewerRef.current?.captureScreenshot();
+        if (!screenshot) {
+          setIsSavingShape(false);
+          return;
+        }
+
+        // Save shape
+        await saveShape(recipe.layers, recipe.sixWay, screenshot);
+
+        // Refresh recent shapes panel
+        setRecentShapesKey(k => k + 1);
+      } catch (err) {
+        console.error('Failed to save shape:', err);
+      } finally {
+        setIsSavingShape(false);
+      }
+    }, 500); // Wait for render
+
+    return () => clearTimeout(timer);
+  }, [objData, recipe, currentShapeId, isSavingShape]);
+
+  // Handle selecting a shape from the recent shapes panel
+  const handleSelectRecentShape = useCallback((layers: Layer[], sixWay: boolean) => {
+    setRecipe({ layers, sixWay });
+    setSelectedPreset(null);
+    setIsModified(true);
+    setGenerationVersion(v => v + 1);
+  }, []);
 
   // Handle preset selection - just updates state, generation effect handles the rest
   const handlePresetSelect = useCallback(async (preset: PresetType) => {
@@ -183,15 +241,21 @@ export default function Home() {
     setGenerationVersion(v => v + 1);
   }, []);
 
-  // Handle share button click
+  // Handle share button click - use shape URL if available for better og:image
   const handleShare = useCallback(async () => {
     if (!recipe) return;
 
-    const url = generateShareUrl({
-      layers: recipe.layers,
-      sixWay: recipe.sixWay,
-      autoRotate
-    });
+    // If we have a saved shape, use the shape URL for better og:image preview
+    let url: string;
+    if (currentShapeId) {
+      url = `${window.location.origin}/s/${currentShapeId}`;
+    } else {
+      url = generateShareUrl({
+        layers: recipe.layers,
+        sixWay: recipe.sixWay,
+        autoRotate
+      });
+    }
 
     try {
       await navigator.clipboard.writeText(url);
@@ -201,7 +265,7 @@ export default function Home() {
       // Fallback for browsers without clipboard API
       prompt('Copy this URL to share:', url);
     }
-  }, [recipe, autoRotate]);
+  }, [recipe, autoRotate, currentShapeId]);
 
   // Control panel content - shared between desktop and mobile
   const controlPanelContent = (
@@ -377,7 +441,12 @@ export default function Home() {
 
   return (
     <main className="relative w-full h-dvh overflow-hidden">
-      <FractalViewer objData={objData} autoRotate={autoRotate} onAutoRotateChange={setAutoRotate} />
+      <FractalViewer
+        ref={viewerRef}
+        objData={objData}
+        autoRotate={autoRotate}
+        onAutoRotateChange={setAutoRotate}
+      />
 
       {/* Centered loading spinner */}
       {isLoading && (
@@ -446,6 +515,12 @@ export default function Home() {
       <div className="absolute top-4 right-4 md:top-auto md:bottom-4">
         {fileInfoBar}
       </div>
+
+      {/* Recent shapes panel - right side */}
+      <RecentShapesPanel
+        key={recentShapesKey}
+        onSelectShape={handleSelectRecentShape}
+      />
     </main>
   );
 }
