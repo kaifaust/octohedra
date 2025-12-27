@@ -1,45 +1,27 @@
+import multiprocessing as mp
 
-import gc
-
-from trimesh.exchange.export import export_mesh
-
-from octohedra.builders.RecipeBuilder import PRESET_RECIPES, RecipeBuilder, get_preset_recipe
-from octohedra.utils import OctoConfigs
-
-CONFIG_MAP = {
-    "rainbow_speed": OctoConfigs.config_20_rainbow_speed,
-    "rainbow_gem": OctoConfigs.config_20_rainbow_gem,
-    "quantum_gem": OctoConfigs.config_20_quantum_gem,
-    "quantum_speed": OctoConfigs.config_20_quantum_Speed,
-    "debug": OctoConfigs.giant_debug,
-}
+from octohedra.builders.RecipeBuilder import PRESET_RECIPES, get_preset_recipe
 
 # List of available presets
 AVAILABLE_PRESETS = list(PRESET_RECIPES.keys())
 
 
-def _build_mesh(
-    layers: list[dict],
-    config_name: str = "rainbow_speed",
-    six_way: bool = False,
-    grid_depth: int | None = None,
-    grid_min_depth: int = 2,
-):
-    """Build a fractal mesh from a recipe.
+def _generate_in_subprocess(queue, layers, config_name, six_way, grid_depth, grid_min_depth, file_type):
+    """Worker function that runs in a subprocess to generate mesh."""
+    from trimesh.exchange.export import export_mesh
+    from octohedra.builders.RecipeBuilder import RecipeBuilder
+    from octohedra.utils import OctoConfigs
 
-    Args:
-        layers: List of layer configurations, each with depth and shape
-        config_name: Render config preset
-        six_way: Whether to apply six-way mirroring (for star shapes)
-        grid_depth: For grid structures, the expansion depth (enables 2D grid of towers)
-        grid_min_depth: For grid structures, stop expansion at this depth
+    config_map = {
+        "rainbow_speed": OctoConfigs.config_20_rainbow_speed,
+        "rainbow_gem": OctoConfigs.config_20_rainbow_gem,
+        "quantum_gem": OctoConfigs.config_20_quantum_gem,
+        "quantum_speed": OctoConfigs.config_20_quantum_Speed,
+        "debug": OctoConfigs.giant_debug,
+    }
 
-    Returns:
-        Trimesh mesh object
-    """
-    config = CONFIG_MAP.get(config_name, OctoConfigs.config_20_rainbow_speed)
+    config = config_map.get(config_name, OctoConfigs.config_20_rainbow_speed)
 
-    # Use RecipeBuilder for all generation - grid_depth enables grid expansion
     builder = RecipeBuilder(
         layers=layers,
         grid_depth=grid_depth,
@@ -48,7 +30,6 @@ def _build_mesh(
 
     grid = builder.materialize()
 
-    # Apply six-way mirroring if requested (for star preset)
     if six_way:
         grid.six_way()
 
@@ -57,11 +38,26 @@ def _build_mesh(
 
     mesh = grid.render(config)
 
-    grid.cache.clear()
-    grid.occ.clear()
-    del grid, builder
+    if file_type == "stl":
+        result = export_mesh(mesh, file_obj=None, file_type="stl")
+    else:
+        result = export_mesh(mesh, file_obj=None, file_type="obj", include_normals=False, digits=6)
 
-    return mesh
+    queue.put(result)
+
+
+def _run_in_subprocess(layers, config_name, six_way, grid_depth, grid_min_depth, file_type):
+    """Run mesh generation in a subprocess and return the result."""
+    ctx = mp.get_context("spawn")
+    queue = ctx.Queue()
+    proc = ctx.Process(
+        target=_generate_in_subprocess,
+        args=(queue, layers, config_name, six_way, grid_depth, grid_min_depth, file_type),
+    )
+    proc.start()
+    result = queue.get()
+    proc.join()
+    return result
 
 
 def generate_from_recipe(
@@ -73,28 +69,9 @@ def generate_from_recipe(
 ) -> str:
     """Generate a fractal mesh from a recipe and return as OBJ string.
 
-    Args:
-        layers: List of layer configurations, each with depth and shape
-        config_name: Render config preset
-        six_way: Whether to apply six-way mirroring (for star shapes)
-        grid_depth: For grid structures, the expansion depth (enables 2D grid)
-        grid_min_depth: For grid structures, stop expansion at this depth
-
-    Returns:
-        OBJ file content as string
+    Runs in a subprocess to fully release memory after generation.
     """
-    mesh = _build_mesh(layers, config_name, six_way, grid_depth, grid_min_depth)
-
-    obj_content = export_mesh(
-        mesh,
-        file_obj=None,
-        file_type="obj",
-        include_normals=False,
-        digits=6,
-    )
-    del mesh
-    gc.collect()
-    return obj_content
+    return _run_in_subprocess(layers, config_name, six_way, grid_depth, grid_min_depth, "obj")
 
 
 def generate_stl_from_recipe(
@@ -106,26 +83,9 @@ def generate_stl_from_recipe(
 ) -> bytes:
     """Generate a fractal mesh from a recipe and return as binary STL.
 
-    Args:
-        layers: List of layer configurations, each with depth and shape
-        config_name: Render config preset
-        six_way: Whether to apply six-way mirroring (for star shapes)
-        grid_depth: For grid structures, the expansion depth (enables 2D grid)
-        grid_min_depth: For grid structures, stop expansion at this depth
-
-    Returns:
-        Binary STL file content
+    Runs in a subprocess to fully release memory after generation.
     """
-    mesh = _build_mesh(layers, config_name, six_way, grid_depth, grid_min_depth)
-
-    stl_content = export_mesh(
-        mesh,
-        file_obj=None,
-        file_type="stl",
-    )
-    del mesh
-    gc.collect()
-    return stl_content
+    return _run_in_subprocess(layers, config_name, six_way, grid_depth, grid_min_depth, "stl")
 
 
 def generate_fractal(
