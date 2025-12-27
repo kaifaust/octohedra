@@ -55,7 +55,13 @@ def _build_mesh(
     grid.crop(z_min=0)
     grid.compute_trimming()
 
-    return grid.render(config)
+    mesh = grid.render(config)
+
+    grid.cache.clear()
+    grid.occ.clear()
+    del grid, builder
+
+    return mesh
 
 
 def generate_from_recipe(
@@ -86,6 +92,7 @@ def generate_from_recipe(
         include_normals=False,
         digits=6,
     )
+    del mesh
     gc.collect()
     return obj_content
 
@@ -116,6 +123,7 @@ def generate_stl_from_recipe(
         file_obj=None,
         file_type="stl",
     )
+    del mesh
     gc.collect()
     return stl_content
 
