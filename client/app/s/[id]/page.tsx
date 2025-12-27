@@ -1,3 +1,4 @@
+import { Metadata } from 'next';
 import { redirect } from 'next/navigation';
 import { list } from '@vercel/blob';
 import { StoredShape } from '@/lib/shapes';
@@ -19,6 +20,30 @@ async function getShape(id: string): Promise<StoredShape | null> {
   } catch {
     return null;
   }
+}
+
+export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
+  const { id } = await params;
+
+  const url = `https://www.octohedra.com/s/${id}`;
+
+  return {
+    openGraph: {
+      title: 'Octohedra',
+      description: 'Fractal geometry generator - create and 3D print octahedral fractals',
+      url,
+      siteName: 'Octohedra',
+      type: 'website',
+    },
+    twitter: {
+      card: 'summary_large_image',
+      title: 'Octohedra',
+      description: 'Fractal geometry generator - create and 3D print octahedral fractals',
+    },
+    alternates: {
+      canonical: url,
+    },
+  };
 }
 
 export default async function ShapePage({ params }: PageProps) {
